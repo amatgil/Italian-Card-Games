@@ -30,3 +30,6 @@ there are more but BORING TO TYPEEE (TODO)
 
 Whoever gets to 21 total points first, wins
 
+
+# Turns
+There are two players, Purple and Green. They start being First and Shuffler (Purple moves first). On the second match, they switch and keep switching every match.

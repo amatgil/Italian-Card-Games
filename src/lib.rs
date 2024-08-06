@@ -33,9 +33,9 @@ pub enum CardNum {
 
 #[derive(Clone, Debug)]
 pub struct Game {
-    purple_points: usize, // Host, probably
-    green_points: usize,
-    curr_match: Match
+    pub purple_points: usize, // Host, probably
+    pub green_points: usize,
+    pub curr_match: Match
 }
 
 #[derive(Clone, Debug)]
@@ -250,14 +250,14 @@ impl Match {
         }
 
         // Who has 7 bello
-        if let Some(_) = fir.iter().position(|c| c == &Card { suit: Suit::Denari, number: CardNum::Numeric(7)}) {
+        if fir.iter().position(|c| c == &Card::denari(7)).is_some() {
             fir_points += 1;
         } else {
             shuf_points += 1;
         }
 
         // Who has king bello
-        if let Some(_) = fir.iter().position(|c| c == &Card { suit: Suit::Denari, number: CardNum::Re}) {
+        if fir.iter().position(|c| c == &Card::denari(10 /* Re */)).is_some() {
             fir_points += 1;
         } else {
             shuf_points += 1;
@@ -268,7 +268,7 @@ impl Match {
         check_napoli(&shuf, &mut shuf_points);
 
         // Primiera (7s thing (just counting))
-        let i = 7;
+        let mut i = 7;
         while i > 0 {
             match cards_with_value(i, fir).cmp(&cards_with_value(i, shuf)) {
                 Ordering::Greater => {
@@ -283,17 +283,17 @@ impl Match {
             }
         }
         
-
-
         (fir_points, shuf_points)
     }
 
-    pub fn has_full_napoli(&self, pila: &[Card]) -> bool {
-        (1..=10).all(|i| pila.contains(&Card::denari(i)))
-    }
+}
+
+pub fn has_full_napoli(pila: &[Card]) -> bool {
+    (1..=10).all(|i| pila.contains(&Card::denari(i)))
 }
 
 fn cards_with_value(target_value: usize, cards: &[Card]) -> usize {
+    cards.iter().filter(|c| c.value() == target_value).count()
 }
 
 fn check_napoli(pila: &[Card], points: &mut usize) {
