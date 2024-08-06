@@ -53,17 +53,26 @@ impl Card {
 
         let suits = [Suit::Denari, Suit::Coppe, Suit::Bastoni, Suit::Spade];
 
-        let mut deck = Vec::new();
+        let mut deck = Vec::with_capacity(numbers.len()*suits.len());
         for number in numbers {
             for suit in suits {
                 deck.push(Card { number, suit  } )
             }
         }
 
-        // TODO: Shuffle this lmfao
+        // Shuffle the deck
+        use rand::Rng;
+        let mut rng = rand::thread_rng();
+
+        for i in (1..deck.len()).rev() {
+            let j = rng.gen_range(0..=i);
+            deck.swap(i, j);
+        }
+
         deck
     }
 }
+
 
 impl Game {
     pub fn new() -> Game {
@@ -71,7 +80,6 @@ impl Game {
 
         let mut player_first = Player::default();
         let mut player_shuffler = Player::default();
-
 
         for _ in 0..3 {
             let (c1, c2) = (deck.pop().unwrap(), deck.pop().unwrap());
