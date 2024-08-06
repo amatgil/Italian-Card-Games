@@ -22,7 +22,7 @@ pub enum Suit {
     Spade, 
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CardNum {
     Numeric(usize),
     Fante,
@@ -32,16 +32,35 @@ pub enum CardNum {
 
 #[derive(Clone, Debug)]
 pub struct Game {
-    player_purple: usize, // Host, probably
-    player_green: usize,
+    purple_points: usize, // Host, probably
+    green_points: usize,
+    curr_match: Match
 }
 
 #[derive(Clone, Debug)]
 pub struct Match {
+    pub turn: Turn,
     pub player_first: Player,
     pub player_shuffler: Player,
     pub deck: Vec<Card>,
     pub table: Vec<Card>
+}
+
+#[derive(Clone, Copy, Debug, Default)]
+pub enum Turn {
+    #[default]
+    First,
+    Shuffler
+}
+
+impl Game {
+    pub fn new() -> Game {
+        Game {
+            curr_match: Match::new(),
+            purple_points: 0,
+            green_points:  0,
+        }
+    }
 }
 
 impl Card {
@@ -102,8 +121,75 @@ impl Match {
             table.push(c);
         }
 
-        Match { player_first, player_shuffler, deck, table }
+        Match { player_first, player_shuffler, deck, table, turn: Turn::First }
     }
+
+    pub fn make_move(&mut self, input: &str) -> Result<(), MoveError> {
+        let mov = self.parse_move(input)?;
+
+        let player = match self.turn {
+            Turn::First => &mut self.player_first,
+            Turn::Shuffler => &mut self.player_shuffler,
+        };
+
+        let hand_card: &Card = player.curr_hand.get(mov.from)
+            .ok_or(MoveError::OutOfRangeOfHand)?;
+
+        let table_cards: Vec<&Card> = mov.to.iter()
+            .map(|&i| self.table.get(i))
+            .collect::<Option<Vec<&Card>>>()
+            .ok_or(MoveError::OutOfRangeOfTable)?;
+
+        if hand_card.number == CardNum::Numeric(1) {
+            // We have an ace, we get everything (including itself)
+            for i in 0..self.table.len() {
+                player.pile.push(self.table.pop().unwrap());
+            }
+            player.pile.push(*hand_card); // Don't forget the ace
+            Ok(())
+        } else if hand_card.value() == table_cards.iter().map(|c| c.value()).sum() {
+            for card in &table_cards {
+                player.pile.push(**card);
+                player.pile.push(*hand_card);
+            }
+            for i in mov.to { self.table.remove(i); } // Remove them from the table
+
+            if self.table.len() == 0 { // Do we have a scopa (non-ace)?
+                player.scope += 1;
+            }
+            Ok(())
+        } else {
+            Err(MoveError::MismatchedValues)
+        }
+    }
+
+    // I'm too lazy to write another enum that's a subset of MoveError AND THEN impl From<>. I can just return it
+    fn parse_move(&self, mov: &str) -> Result<ParsedMove, MoveError> {
+        todo!()
+    }
+
+}
+
+struct ParsedMove {
+    from: usize,
+    to: Vec<usize>
+}
+
+pub enum MoveError {
+    /// Move could not be parsed
+    ParseError,
+    /// Index isn't a base 10 single-char digit
+    InvalidDigit,
+    /// When you try to play an ace but you don't have it
+    InvalidAce,  
+    /// Values don't match
+    MismatchedValues,
+    /// An addition did not yield the expected value
+    AdditionDoesntCheckOut,
+    /// The hand index was invalid
+    OutOfRangeOfHand,
+    /// At least one of the table indices was out of range 
+    OutOfRangeOfTable,
 }
 
 impl Display for CardNum {

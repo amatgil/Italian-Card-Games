@@ -1,7 +1,7 @@
 use scopa::*;
 
 fn main() {
-    let mut game = Match::new();
+    let mut game = Game::new();
 
     dbg!(game);
 }

@@ -6,7 +6,7 @@
 Let's notate the table like this: `A B C D E ...` (where each letter represents a card) and a player's deck as `a b c d e ...`.
 
 
-Possible moves:
+Possible moves (letters represent numbers):
 - `a;B`: `a`'s value is equal to `B`'s value and they both get added to their pile
 - `a;B+C`: `a`'s value is `B`'s + `C`'s
 - `a;B+C+D`: same as above, no limit
