@@ -244,40 +244,31 @@ impl Match {
         }
 
         // Napoli 
-        let dc = |n| match n { // "dc" as in "Denari card"
-            1..=7 => Card { suit: Suit::Denari, number:: CardNum::Numeric(n) },
-            8     => Card { suit: Suit::Denari, number:: CardNum::Fante }
-            9     => Card { suit: Suit::Denari, number:: CardNum::Cavallo }
-            10    => Card { suit: Suit::Denari, number:: CardNum::Re }
-            _     => panic!("Tried to make a card that's greater than 10")
-        };
+        check_napoli(&fir, &mut fir_points);
+        check_napoli(&shuf, &mut shuf_points);
 
-        // Napoli for fir
-        if [1, 2, 3].iter().map(|i| fir.contains(&dc(i))).all() {
-            if !fir.contains(&dc(4)) { fir_points += 1; }
-            else {
-                let i = 4; // This goes all the way up, but players should only have up to 10/re
-                while fir.contains(&dc(i)) { i += 1 }
-                fir_points += i;
-            }
-        }
-
-        // Napoli for shuf
-        if [1, 2, 3].iter().map(|i| shuf.contains(&dc(i))).all() {
-            if !shuf.contains(&dc(4)) { shuf_points += 1; }
-            else {
-                let i = 4;
-                while shuf.contains(&dc(i)) { i += 1 }
-                shuf_points += i;
-            }
-        }
-
-
-        todo!()
-
+        todo!();
 
 
         (fir_points, shuf_points)
+    }
+}
+
+fn check_napoli(pila: &[Card], points: &mut usize) {
+    let dc = |n| match n { // "dc" as in "Denari card"
+        1..=7 => Card { suit: Suit::Denari, number: CardNum::Numeric(n) },
+        8     => Card { suit: Suit::Denari, number: CardNum::Fante },
+        9     => Card { suit: Suit::Denari, number: CardNum::Cavallo },
+        10    => Card { suit: Suit::Denari, number: CardNum::Re },
+        _     => panic!("Tried to make a card that's greater than 10")};
+
+    if [1, 2, 3].iter().all(|&i| pila.contains(&dc(i))) {
+        if !pila.contains(&dc(4)) { *points += 1; }
+        else {
+            let mut i = 4; // This goes all the way up, but players should only have up to 10/re
+            while pila.contains(&dc(i)) { i += 1 }
+            *points += i;
+        }
     }
 }
 
