@@ -3,7 +3,9 @@ use std::fmt::Debug;
 
 #[derive(Clone, Debug, Default)]
 pub struct Player {
-    pub cards: Vec<Card>, // Three or less held cards
+    pub curr_hand: Vec<Card>, // Three or less held cards
+    pub pile: Vec<Card>,      // Cards that they've won
+    pub scope: usize,         // nº of scope obtained
 }
 
 #[derive(Clone, Copy)]
@@ -30,6 +32,12 @@ pub enum CardNum {
 
 #[derive(Clone, Debug)]
 pub struct Game {
+    player_purple: usize, // Host, probably
+    player_green: usize,
+}
+
+#[derive(Clone, Debug)]
+pub struct Match {
     pub player_first: Player,
     pub player_shuffler: Player,
     pub deck: Vec<Card>,
@@ -60,7 +68,7 @@ impl Card {
             }
         }
 
-        // Shuffle the deck
+        // Shuffle the deck (Fisher-Yates my beloved)
         use rand::Rng;
         let mut rng = rand::thread_rng();
 
@@ -74,8 +82,8 @@ impl Card {
 }
 
 
-impl Game {
-    pub fn new() -> Game {
+impl Match {
+    pub fn new() -> Match {
         let mut deck = Card::shuffled_deck();
 
         let mut player_first = Player::default();
@@ -84,8 +92,8 @@ impl Game {
         for _ in 0..3 {
             let (c1, c2) = (deck.pop().unwrap(), deck.pop().unwrap());
 
-            player_first.cards.push(c1);
-            player_shuffler.cards.push(c2);
+            player_first.curr_hand.push(c1);
+            player_shuffler.curr_hand.push(c2);
         }
 
         let mut table = Vec::new();
@@ -94,7 +102,7 @@ impl Game {
             table.push(c);
         }
 
-        Game { player_first, player_shuffler, deck, table }
+        Match { player_first, player_shuffler, deck, table }
     }
 }
 
