@@ -34,7 +34,7 @@ pub enum CardNum {
 pub struct Game {
     purple_points: usize, // Host, probably
     green_points: usize,
-    curr_match: Match
+    pub curr_match: Match
 }
 
 #[derive(Clone, Debug)]
@@ -237,7 +237,14 @@ impl Display for Turn {
 impl Display for Match {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
         let deck_len = self.deck.len();
-        let s = format!("-------------------\nTurn: '{}'\nDeck has '{}' cards ('{}' turns left)\nFirst has '{}' cards\nShuffler has '{}' cards\nTable has cards: '{}'\n-------------------",
+        let s = format!(
+"-------------------
+Turn: '{}'
+Deck has '{}' cards ('{}' turns left)
+First has '{}' cards
+Shuffler has '{}' cards
+Table has cards: '{}'
+-------------------",
                         self.turn,
                         deck_len,
                         deck_len / 6,
