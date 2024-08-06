@@ -1,5 +1,6 @@
 use std::fmt::{Display, Formatter};
 use std::fmt::Debug;
+use std::cmp::Ordering;
 
 #[derive(Clone, Debug, Default)]
 pub struct Player {
@@ -34,7 +35,7 @@ pub enum CardNum {
 pub struct Game {
     purple_points: usize, // Host, probably
     green_points: usize,
-    pub curr_match: Match
+    curr_match: Match
 }
 
 #[derive(Clone, Debug)]
@@ -60,6 +61,32 @@ impl Game {
             purple_points: 0,
             green_points:  0,
         }
+    }
+
+    pub fn make_move(&mut self, mov: &str) -> Result<(), MoveError> {
+        self.curr_match.make_move(mov)
+    }
+    pub fn toggle_turn(&mut self) {
+        self.curr_match.turn.toggle_turn()
+    }
+    pub fn winner(&self) -> Option<(&str, usize, usize)> {
+        let (purp, grep) = (self.purple_points, self.purple_points);
+        let (purple_win, green_win) = (Some(("Purple", purp, grep)), Some(("Green",  grep, purp)));
+
+        match (purp, grep) {
+            (0..=20, 0..=20)  => None,
+            (21..,   0..=20)  => purple_win,
+            (0..=20, 21..  )  => green_win,
+            (p, g)            => match p.cmp(&g) {
+                Ordering::Less    => green_win,
+                Ordering::Equal   => None,
+                Ordering::Greater => purple_win,
+            }
+        }
+    }
+
+    pub fn is_match_over(&self) -> bool {
+        self.curr_match.is_over()
     }
 }
 
@@ -124,6 +151,13 @@ impl Match {
         Match { player_first, player_shuffler, deck, table, turn: Turn::First }
     }
 
+    pub fn is_over(&self) -> bool {
+        self.table.is_empty()
+            && self.deck.is_empty()
+            && self.player_first.curr_hand.is_empty()
+            && self.player_shuffler.curr_hand.is_empty()
+    }
+
     pub fn make_move(&mut self, input: &str) -> Result<(), MoveError> {
         let mov = self.parse_move(input)?;
 
@@ -175,6 +209,7 @@ struct ParsedMove {
     to: Vec<usize>
 }
 
+#[derive(Clone, Debug, Copy)]
 pub enum MoveError {
     /// Move could not be parsed
     ParseError,
@@ -236,7 +271,6 @@ impl Display for Turn {
 
 impl Display for Match {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
-        let deck_len = self.deck.len();
         let s = format!(
 "-------------------
 Turn: '{}'
@@ -246,12 +280,21 @@ Shuffler has '{}' cards
 Table has cards: '{}'
 -------------------",
                         self.turn,
-                        deck_len,
-                        deck_len / 6,
+                        self.deck.len(), self.deck.len() / 6,
                         self.player_first.curr_hand.len(),
                         self.player_shuffler.curr_hand.len(),
                         self.table.iter().map(|c| c.to_string()).collect::<Vec<String>>().join(" ; "),
         );
         write!(f, "{s}")
+    }
+}
+
+
+impl Turn {
+    fn toggle_turn(&mut self) {
+        match self {
+            Self::First => *self = Self::Shuffler,
+            Self::Shuffler => *self = Self::First,
+        }
     }
 }
