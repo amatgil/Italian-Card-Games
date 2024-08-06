@@ -9,13 +9,13 @@ pub struct Player {
     pub scope: usize,         // nº of scope obtained
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub struct Card {
     pub suit: Suit,
     pub number: CardNum
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Suit {
     Denari,
     Coppe,
@@ -85,8 +85,13 @@ impl Game {
         }
     }
 
-    pub fn is_match_over(&self) -> bool {
-        self.curr_match.is_over()
+    pub fn is_match_over(&self) -> Option<(usize, usize)> {
+        if !self.curr_match.is_over() {
+            None
+        } else {
+            let (first_p, shuffler_p) = self.curr_match.count_final_points();
+            Some(todo!())
+        }
     }
 }
 
@@ -202,6 +207,78 @@ impl Match {
         todo!()
     }
 
+    fn count_final_points(&self) -> (usize, usize) {
+        let mut fir_points = 0;
+        let mut shuf_points = 0;
+
+        let fir = &self.player_first.pile;
+        let shuf = &self.player_shuffler.pile;
+
+        // Number of cards
+        match fir.len().cmp(&shuf.len()) {
+            Ordering::Greater  => fir_points += 1,
+            Ordering::Equal    => {},
+            Ordering::Less     => shuf_points += 1,
+        }
+
+        // Number of Denari (monee monee monee)
+        match fir.iter().filter(|c| c.suit == Suit::Denari).count()
+            .cmp(&shuf.iter().filter(|c| c.suit == Suit::Denari).count()) {
+            Ordering::Greater  => fir_points += 1,
+            Ordering::Equal    => {},
+            Ordering::Less     => shuf_points += 1,
+        }
+
+        // Who has 7 bello
+        if let Some(_) = fir.iter().position(|c| c == &Card { suit: Suit::Denari, number: CardNum::Numeric(7)}) {
+            fir_points += 1;
+        } else {
+            shuf_points += 1;
+        }
+
+        // Who has king bello
+        if let Some(_) = fir.iter().position(|c| c == &Card { suit: Suit::Denari, number: CardNum::Re}) {
+            fir_points += 1;
+        } else {
+            shuf_points += 1;
+        }
+
+        // Napoli 
+        let dc = |n| match n { // "dc" as in "Denari card"
+            1..=7 => Card { suit: Suit::Denari, number:: CardNum::Numeric(n) },
+            8     => Card { suit: Suit::Denari, number:: CardNum::Fante }
+            9     => Card { suit: Suit::Denari, number:: CardNum::Cavallo }
+            10    => Card { suit: Suit::Denari, number:: CardNum::Re }
+            _     => panic!("Tried to make a card that's greater than 10")
+        };
+
+        // Napoli for fir
+        if [1, 2, 3].iter().map(|i| fir.contains(&dc(i))).all() {
+            if !fir.contains(&dc(4)) { fir_points += 1; }
+            else {
+                let i = 4; // This goes all the way up, but players should only have up to 10/re
+                while fir.contains(&dc(i)) { i += 1 }
+                fir_points += i;
+            }
+        }
+
+        // Napoli for shuf
+        if [1, 2, 3].iter().map(|i| shuf.contains(&dc(i))).all() {
+            if !shuf.contains(&dc(4)) { shuf_points += 1; }
+            else {
+                let i = 4;
+                while shuf.contains(&dc(i)) { i += 1 }
+                shuf_points += i;
+            }
+        }
+
+
+        todo!()
+
+
+
+        (fir_points, shuf_points)
+    }
 }
 
 struct ParsedMove {
