@@ -1,14 +1,15 @@
 use std::fmt::{Display, Formatter};
+use std::fmt::Debug;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct Player {
-    cards: Vec<Card>, // Three or less held cards
+    pub cards: Vec<Card>, // Three or less held cards
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy)]
 pub struct Card {
-    suit: Suit,
-    number: CardNum
+    pub suit: Suit,
+    pub number: CardNum
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -29,10 +30,10 @@ pub enum CardNum {
 
 #[derive(Clone, Debug)]
 pub struct Game {
-    player_first: Player,
-    player_shuffler: Player,
-    deck: Vec<Card>,
-    table: Vec<Card>
+    pub player_first: Player,
+    pub player_shuffler: Player,
+    pub deck: Vec<Card>,
+    pub table: Vec<Card>
 }
 
 impl Card {
@@ -59,18 +60,33 @@ impl Card {
             }
         }
 
+        // TODO: Shuffle this lmfao
         deck
     }
 }
 
 impl Game {
-    fn new() -> Game {
-        Game {
-            player_first: Player { cards: vec![] },
-            player_shuffler: Player { cards: vec![] },
-            deck: Card::shuffled_deck(),
-            table: vec![],
+    pub fn new() -> Game {
+        let mut deck = Card::shuffled_deck();
+
+        let mut player_first = Player::default();
+        let mut player_shuffler = Player::default();
+
+
+        for _ in 0..3 {
+            let (c1, c2) = (deck.pop().unwrap(), deck.pop().unwrap());
+
+            player_first.cards.push(c1);
+            player_shuffler.cards.push(c2);
         }
+
+        let mut table = Vec::new();
+        for _ in 0..4 {
+            let c = deck.pop().unwrap();
+            table.push(c);
+        }
+
+        Game { player_first, player_shuffler, deck, table }
     }
 }
 
@@ -96,6 +112,11 @@ impl Display for Suit {
     }
 }
 
+impl Debug for Card {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
+        write!(f, "{}{}", self.number, self.suit)
+    }
+}
 impl Display for Card {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
         write!(f, "{}{}", self.number, self.suit)
