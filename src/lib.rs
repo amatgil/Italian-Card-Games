@@ -142,7 +142,7 @@ impl Match {
 
         if hand_card.number == CardNum::Numeric(1) {
             // We have an ace, we get everything (including itself)
-            for i in 0..self.table.len() {
+            for _ in 0..self.table.len() {
                 player.pile.push(self.table.pop().unwrap());
             }
             player.pile.push(*hand_card); // Don't forget the ace
@@ -222,5 +222,29 @@ impl Debug for Card {
 impl Display for Card {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
         write!(f, "{}{}", self.number, self.suit)
+    }
+}
+
+impl Display for Turn {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
+        match self {
+            Turn::First => write!(f, "First"),
+            Turn::Shuffler => write!(f, "Shuffler"),
+        }
+    }
+}
+
+impl Display for Match {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
+        let deck_len = self.deck.len();
+        let s = format!("-------------------\nTurn: '{}'\nDeck has '{}' cards ('{}' turns left)\nFirst has '{}' cards\nShuffler has '{}' cards\nTable has cards: '{}'\n-------------------",
+                        self.turn,
+                        deck_len,
+                        deck_len / 6,
+                        self.player_first.curr_hand.len(),
+                        self.player_shuffler.curr_hand.len(),
+                        self.table.iter().map(|c| c.to_string()).collect::<Vec<String>>().join(" ; "),
+        );
+        write!(f, "{s}")
     }
 }
