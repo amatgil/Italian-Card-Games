@@ -96,6 +96,26 @@ impl Game {
 }
 
 impl Card {
+    pub fn new(suit: Suit, n: usize) -> Card {
+        match n { // "dc" as in "Denari card"
+            1..=7 => Card { suit, number: CardNum::Numeric(n) },
+            8     => Card { suit, number: CardNum::Fante },
+            9     => Card { suit, number: CardNum::Cavallo },
+            10    => Card { suit, number: CardNum::Re },
+            _     => panic!("Tried to make a card that's greater than 10"),
+        }
+    }
+
+    pub fn denari(n: usize) -> Card {
+        match n { 
+            1..=7 => Card { suit: Suit::Denari, number: CardNum::Numeric(n) },
+            8     => Card { suit: Suit::Denari, number: CardNum::Fante },
+            9     => Card { suit: Suit::Denari, number: CardNum::Cavallo },
+            10    => Card { suit: Suit::Denari, number: CardNum::Re },
+            _     => panic!("Tried to make a card that's greater than 10")
+        }
+    }
+
     pub fn value(&self) -> usize {
         match self.number {
             CardNum::Numeric(n) => n,
@@ -247,26 +267,41 @@ impl Match {
         check_napoli(&fir, &mut fir_points);
         check_napoli(&shuf, &mut shuf_points);
 
-        todo!();
+        // Primiera (7s thing (just counting))
+        let i = 7;
+        while i > 0 {
+            match cards_with_value(i, fir).cmp(&cards_with_value(i, shuf)) {
+                Ordering::Greater => {
+                    fir_points += 1;
+                    break;
+                },
+                Ordering::Equal   => i -= 1,
+                Ordering::Less    => {
+                    shuf_points += 1;
+                    break;
+                }
+            }
+        }
+        
 
 
         (fir_points, shuf_points)
     }
+
+    pub fn has_full_napoli(&self, pila: &[Card]) -> bool {
+        (1..=10).all(|i| pila.contains(&Card::denari(i)))
+    }
+}
+
+fn cards_with_value(target_value: usize, cards: &[Card]) -> usize {
 }
 
 fn check_napoli(pila: &[Card], points: &mut usize) {
-    let dc = |n| match n { // "dc" as in "Denari card"
-        1..=7 => Card { suit: Suit::Denari, number: CardNum::Numeric(n) },
-        8     => Card { suit: Suit::Denari, number: CardNum::Fante },
-        9     => Card { suit: Suit::Denari, number: CardNum::Cavallo },
-        10    => Card { suit: Suit::Denari, number: CardNum::Re },
-        _     => panic!("Tried to make a card that's greater than 10")};
-
-    if [1, 2, 3].iter().all(|&i| pila.contains(&dc(i))) {
-        if !pila.contains(&dc(4)) { *points += 1; }
+    if [1, 2, 3].iter().all(|&i| pila.contains(&Card::denari(i))) {
+        if !pila.contains(&Card::denari(4)) { *points += 1; }
         else {
             let mut i = 4; // This goes all the way up, but players should only have up to 10/re
-            while pila.contains(&dc(i)) { i += 1 }
+            while pila.contains(&Card::denari(i)) { i += 1 }
             *points += i;
         }
     }
@@ -331,7 +366,7 @@ impl Display for Card {
 impl Display for Turn {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
         match self {
-            Turn::First => write!(f, "First"),
+            Turn::First    => write!(f, "First"),
             Turn::Shuffler => write!(f, "Shuffler"),
         }
     }
