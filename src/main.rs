@@ -1,3 +1,8 @@
+use scopa::*;
+
 fn main() {
-    println!("Hello, world!");
+    let deck = Card::shuffled_deck();
+    for card in deck {
+        println!("{card}");
+    }
 }
