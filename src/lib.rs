@@ -120,7 +120,9 @@ impl Game {
     }
 
     pub fn make_move<'a>(&'a mut self, mov: &'a str) -> Result<(), MoveError> {
-        self.curr_match.make_move(mov)
+        if let Ok(Some(turn)) = self.curr_match.make_move(mov) {
+            self.who_won_last_round = turn;
+        }
     }
     pub fn toggle_turn(&mut self) {
         self.curr_match.turn.toggle_turn()
@@ -151,7 +153,7 @@ impl Game {
     }
 
     pub fn give_table_to_last_taker(&mut self) {
-        let mut player = match self.who_won_last_round {
+        let mut player: &mut Player = match self.who_won_last_round {
             Turn::First    => &mut self.curr_match.player_first,
             Turn::Shuffler => &mut self.curr_match.player_shuffler,
         };
@@ -271,8 +273,12 @@ impl Match {
             && self.player_shuffler.curr_hand.is_empty()
     }
 
-    pub fn make_move<'a>(&'a mut self, input: &'a str) -> Result<(), MoveError> {
+    /// Returns a Result, that means
+    /// - Ok(Option<Turn>): Is Some if the last move was a take, None if it was placing on the table (for keeping track of the last person to take)
+    /// - Err(...): Read the docs for MoveError
+    pub fn make_move<'a>(&'a mut self, input: &'a str) -> Result<Option<Turn>>, MoveError> {
         let mov = Self::parse_move(input)?;
+        let ret = None;
 
         let player = match self.turn {
             Turn::First => &mut self.player_first,
@@ -297,6 +303,8 @@ impl Match {
 
                 // Remove it from hand
                 remove_elem_from_vec(&mut player.curr_hand, hand_card);
+
+                ret = Some(self.turn);
             } else if hand_card.value() == table_cards.iter().map(|c| c.value()).sum() {
                 for card in &table_cards {
                     player.pile.push(**card);
@@ -309,12 +317,14 @@ impl Match {
                 if self.table.len() == 0 { // Do we have a scopa (non-ace)?
                     player.scope += 1;
                 }
+
+                ret = Some(self.turn);
             } else {
                 return Err(MoveError::MismatchedValues);
             }
         } else {
             // Place on table
-            // TODO: make asso piglia tutto do the thingy instead of placing it when placing a card on the table (`N;` vs `-N` should be identical with an ace)
+            // TODO: make asso piglia tutto do the thingy instead of placing it when placing a card on the table (`N;` vs `tN` should be identical with an ace)
             self.table.push(hand_card);
             remove_elem_from_vec(&mut player.curr_hand, hand_card);
         }
@@ -326,7 +336,7 @@ impl Match {
                 player.curr_hand.push(c);
             }
         }
-        Ok(())
+        Ok(ret)
     }
 
     fn tally_final_points(&self) -> PointTally {
@@ -549,14 +559,16 @@ impl std::ops::Not for PlayerKind {
 impl Display for PointTally {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
         write!(f,
-               "First's scope:\t\t\t{},
+               "=================
+First's scope:\t\t\t{},
 Shuf's scope:\t\t\t{},
 Nº cards:\t\t\t{},
 Nº denari\t\t\t{},
 Sette bello:\t\t\t{},
 Re bello:\t\t\t{},
 Napoli:  \t\t\t{},
-Primiera:\t\t\t{}",
+Primiera:\t\t\t{}
+=================",
                self.scope_first, self.scope_shuf,
                self.num_cards.and_then(|n| Some(n.to_string())).unwrap_or("Nobody".to_string()),
                self.num_denari.and_then(|n| Some(n.to_string())).unwrap_or("Nobody".to_string()),
