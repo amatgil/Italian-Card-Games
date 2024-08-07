@@ -12,8 +12,10 @@ pub fn parse_move_internal(input: &str) -> IResult<&str, ParsedMove> {
     let (input, _) = tag(";")(input)?;
     let (input, right) = parse_right(input)?;
 
-
-    todo!()
+    Ok((input, ParsedMove {
+        from: left as usize,
+        to: right.into_iter().map(|n| n as usize).collect()
+    }))
 }
 fn parse_left(input: &str) -> IResult<&str, u32> {
     nom::character::complete::u32(input)

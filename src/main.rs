@@ -4,8 +4,14 @@ fn main() {
     let mut game = Game::new();
 
     loop {
-        let input = "whatever";
-        if let Err(e) = game.make_move(input) {
+        let mut input = String::new();
+
+        println!("First player (non-shuffler) is '{}'", game.color_playing());
+        println!("{}", game.curr_match);
+        std::io::stdin().read_line(&mut input).expect("Could not read from stdin");
+        input = input.trim().to_string();
+
+        if let Err(e) = game.make_move(&input) {
             println!("move error: {e:?}");
             continue;
         }
@@ -27,8 +33,6 @@ fn main() {
         clear_term();
 
         game.toggle_turn();
-        println!("First player (non-shuffler) is '{}'", game.color_playing());
-        println!("{}", game.curr_match);
     }
 }
 
