@@ -1,7 +1,7 @@
 use nom::{
     IResult,
     bytes::complete::{tag, take_until1},
-    multi::separated_list1,
+    multi::separated_list0,
 };
 
 use crate::ParsedMove;
@@ -22,6 +22,6 @@ fn parse_left(input: &str) -> IResult<&str, u32> {
 }
 
 fn parse_right(input: &str) -> IResult<&str, Vec<u32>> {
-    separated_list1(tag("+"), nom::character::complete::u32)(input)
+    separated_list0(tag("+"), nom::character::complete::u32)(input)
 
 }

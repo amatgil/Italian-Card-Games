@@ -121,6 +121,15 @@ impl Game {
             PK::Green => self.whose_first = PK::Purple,
         }
     }
+    pub fn print_cards_of_curr_player(&self) {
+        let cards = match self.curr_match.turn {
+            Turn::First    => &self.curr_match.player_first.curr_hand,
+            Turn::Shuffler => &self.curr_match.player_shuffler.curr_hand,
+        };
+
+        let s: String = cards.iter().map(|c| c.to_string()).collect::<Vec<String>>().join(" ; ");
+        println!("{s}");
+    }
 }
 
 impl Card {

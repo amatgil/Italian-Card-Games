@@ -6,8 +6,13 @@ fn main() {
     loop {
         let mut input = String::new();
 
-        println!("First player (non-shuffler) is '{}'", game.color_playing());
+        println!("Current player is: '{}'", game.color_playing());
         println!("{}", game.curr_match);
+        print!("You current cards are: ");
+        game.print_cards_of_curr_player();
+
+
+        println!("Waiting for input now....");
         std::io::stdin().read_line(&mut input).expect("Could not read from stdin");
         input = input.trim().to_string();
 
