@@ -128,9 +128,9 @@ impl Game {
     pub fn toggle_turn(&mut self) {
         self.curr_match.turn.toggle_turn()
     }
-    pub fn winner(&self) -> Option<(&str, usize, usize)> {
+    pub fn winner(&self) -> Option<(String, usize, usize)> {
         let (purp, grep) = (self.purple_points, self.green_points);
-        let (purple_win, green_win) = (Some(("Purple", purp, grep)), Some(("Green",  grep, purp)));
+        let (purple_win, green_win) = (Some((purple_text(), purp, grep)), Some((green_text(),  grep, purp)));
 
         match (purp, grep) {
             (0..=20, 0..=20)  => None,
@@ -539,8 +539,8 @@ impl Turn {
 impl Display for PlayerKind {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
         match self {
-            PlayerKind::Purple => write!(f, "Purple"),
-            PlayerKind::Green  => write!(f, "Green"),
+            PlayerKind::Purple => write!(f, "{}", purple_text()),
+            PlayerKind::Green  => write!(f, "{}", green_text()),
         }
     }
 }
@@ -586,4 +586,12 @@ impl Default for Match {
 }
 impl Default for Game {
     fn default() -> Self { Self::new() }
+}
+
+
+pub fn purple_text() -> String {
+    format!("{0}[38;5;93mPurple{0}[0m", 27 as char)
+}
+pub fn green_text() -> String {
+    format!("{0}[38;5;34mGreen{0}[0m", 27 as char)
 }

@@ -7,7 +7,7 @@ fn main() {
         let mut input = String::new();
 
         println!("Current player is: '{}'", game.color_playing());
-        println!("Score is:  Purple '{}' - '{}' Green", game.purple_points, game.green_points);
+        println!("Score is: {} '{}' - '{}' {}", purple_text(), game.purple_points, game.green_points, green_text());
         println!("{}", game.curr_match);
         print!("You current cards are: ");
         game.print_cards_of_curr_player();
@@ -62,33 +62,10 @@ fn main() {
             thread::sleep(time::Duration::from_millis(1500));
             game.toggle_turn();
         }
-
         clear_term();
-
     }
-
 }
 
 fn clear_term() {
     print!("{}[2J", 27 as char);
 }
-
-        //// TODO: compact this repeated code
-        //// if [ someone has llla kfsthsjhrekjghr gold] then win automaticaltnksjny
-        //if has_full_napoli(&game.curr_match.player_first.pile) {
-        //    let winner = match game.curr_match.turn {
-        //        Turn::First    => "Purple",
-        //        Turn::Shuffler => "Green",
-        //    };
-
-        //    println!("{winner} has achieved a full napoli: they win. What a nerd lmfao");
-        //    break;
-        //} else if has_full_napoli(&game.curr_match.player_shuffler.pile) {
-        //    let winner = match game.curr_match.turn {
-        //        Turn::First    => "Green",
-        //        Turn::Shuffler => "Purple",
-        //    };
-
-        //    println!("{winner} has achieved a full napoli: they win. What a nerd lmfao");
-        //    break;
-        //}
