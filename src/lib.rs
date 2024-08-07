@@ -154,7 +154,7 @@ impl Game {
     }
 
     pub fn give_table_to_last_taker(&mut self) {
-        let mut player: &mut Player = match self.who_won_last_round {
+        let player: &mut Player = match self.who_won_last_round {
             Turn::First    => &mut self.curr_match.player_first,
             Turn::Shuffler => &mut self.curr_match.player_shuffler,
         };
@@ -286,8 +286,8 @@ impl Match {
             Turn::Shuffler => &mut self.player_shuffler,
         };
 
-        let hand_card: Card = player.curr_hand.get(mov.from)
-            .ok_or(MoveError::OutOfRangeOfHand)?.clone();
+        let hand_card: Card = *player.curr_hand.get(mov.from)
+            .ok_or(MoveError::OutOfRangeOfHand)?;
 
         if let Some(to_indices) = mov.to {
             let table_cards: Vec<&Card> = to_indices.iter()
@@ -315,7 +315,7 @@ impl Match {
                 for i in to_indices.into_iter().rev() { self.table.remove(i); } // Remove them from the table
                 remove_elem_from_vec(&mut player.curr_hand, hand_card);
 
-                if self.table.len() == 0 { // Do we have a scopa (non-ace)?
+                if self.table.is_empty() { // Do we have a scopa (non-ace)?
                     player.scope += 1;
                 }
 
@@ -365,23 +365,23 @@ impl Match {
         }
 
         // Who has 7 bello
-        if fir.iter().position(|c| c == &Card::denari(7)).is_some() {
+        if fir.iter().any(|c| c == &Card::denari(7)) {
             tally.sette_bello = Turn::First;
         } else {
             tally.sette_bello = Turn::Shuffler;
         }
 
         // Who has king bello
-        if fir.iter().position(|c| c == &Card::denari(10 /* Re */)).is_some() {
+        if fir.iter().any(|c| c == &Card::denari(10 /* Re */)) {
             tally.re_bello = Turn::First;
         } else {
             tally.re_bello = Turn::Shuffler;
         }
 
         // Napoli 
-        if let Some(p) = check_napoli(&fir) {
+        if let Some(p) = check_napoli(fir) {
             tally.napoli = Some((Turn::First, p));
-        } else if let Some(p) = check_napoli(&shuf) {
+        } else if let Some(p) = check_napoli(shuf) {
             tally.napoli = Some((Turn::Shuffler, p));
         } else {
             tally.napoli = None;
@@ -407,7 +407,7 @@ impl Match {
     }
 
     fn parse_move(mov: &str) -> Result<ParsedMove, MoveError> {
-        let (input, result) = parse_move_internal(mov).map_err(|e| MoveError::ParseError(e))?;
+        let (_, result) = parse_move_internal(mov).map_err(MoveError::ParseError)?;
         Ok(result)
     }
 }
@@ -571,12 +571,19 @@ Napoli:  \t\t\t{},
 Primiera:\t\t\t{}
 =================",
                self.scope_first, self.scope_shuf,
-               self.num_cards.and_then(|n| Some(n.to_string())).unwrap_or("Nobody".to_string()),
-               self.num_denari.and_then(|n| Some(n.to_string())).unwrap_or("Nobody".to_string()),
+               self.num_cards.map(|n| n.to_string()).unwrap_or("Nobody".to_string()),
+               self.num_denari.map(|n| n.to_string()).unwrap_or("Nobody".to_string()),
                self.sette_bello,
                self.re_bello,
-               self.napoli.and_then(|(t, n)| Some(format!("{t} ({n})"))).unwrap_or("Nobody".to_string()),
-               self.primiera.and_then(|n| Some(n.to_string())).unwrap_or("Nobody".to_string()),
+               self.napoli.map(|(t, n)| format!("{t} ({n})")).unwrap_or("Nobody".to_string()),
+               self.primiera.map(|n| n.to_string()).unwrap_or("Nobody".to_string()),
         )
     }
+}
+
+impl Default for Match {
+    fn default() -> Self { Self::new() }
+}
+impl Default for Game {
+    fn default() -> Self { Self::new() }
 }
