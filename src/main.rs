@@ -16,35 +16,42 @@ fn main() {
             game.purple_points += purp_p;
             game.green_points  += gren_p;
             game.curr_match = Match::new();
-        }
-
-        // TODO: compact this repeated code
-        // if [ someone has llla kfsthsjhrekjghr gold] then win automaticaltnksjny
-        if has_full_napoli(&game.curr_match.player_first.pile) {
-            let winner = match game.curr_match.turn {
-                Turn::First    => "Purple",
-                Turn::Shuffler => "Green",
-            };
-
-            println!("{winner} has achieved a full napoli: they win. What a nerd lmfao");
-            break;
-        } else if has_full_napoli(&game.curr_match.player_shuffler.pile) {
-            let winner = match game.curr_match.turn {
-                Turn::First    => "Green",
-                Turn::Shuffler => "Purple",
-            };
-
-            println!("{winner} has achieved a full napoli: they win. What a nerd lmfao");
-            break;
+            game.toggle_whose_first();
         }
 
         if let Some((player_name, win_p, lose_p)) = game.winner() {
-            println!("{player_name} has won with {win_p} points! The loser had {lose_p} points")
+            println!("{player_name} has won with {win_p} points! The loser had {lose_p} points");
+            break;
         }
 
+        clear_term();
+
         game.toggle_turn();
+        println!("First player (non-shuffler) is '{}'", game.color_playing());
         println!("{}", game.curr_match);
     }
-
-
 }
+
+fn clear_term() {
+    print!(" {}[2J", 27 as char);
+}
+
+        //// TODO: compact this repeated code
+        //// if [ someone has llla kfsthsjhrekjghr gold] then win automaticaltnksjny
+        //if has_full_napoli(&game.curr_match.player_first.pile) {
+        //    let winner = match game.curr_match.turn {
+        //        Turn::First    => "Purple",
+        //        Turn::Shuffler => "Green",
+        //    };
+
+        //    println!("{winner} has achieved a full napoli: they win. What a nerd lmfao");
+        //    break;
+        //} else if has_full_napoli(&game.curr_match.player_shuffler.pile) {
+        //    let winner = match game.curr_match.turn {
+        //        Turn::First    => "Green",
+        //        Turn::Shuffler => "Purple",
+        //    };
+
+        //    println!("{winner} has achieved a full napoli: they win. What a nerd lmfao");
+        //    break;
+        //}

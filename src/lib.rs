@@ -9,6 +9,13 @@ pub struct Player {
     pub scope: usize,         // nº of scope obtained
 }
 
+#[derive(Clone, Debug, Default, Copy)]
+pub enum PlayerKind {
+    #[default]
+    Purple,
+    Green
+}
+
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct Card {
     pub suit: Suit,
@@ -35,7 +42,8 @@ pub enum CardNum {
 pub struct Game {
     pub purple_points: usize, // Host, probably
     pub green_points: usize,
-    pub curr_match: Match
+    pub curr_match: Match,
+    pub whose_first: PlayerKind,
 }
 
 #[derive(Clone, Debug)]
@@ -57,6 +65,7 @@ pub enum Turn {
 impl Game {
     pub fn new() -> Game {
         Game {
+            whose_first: PlayerKind::Purple,
             curr_match: Match::new(),
             purple_points: 0,
             green_points:  0,
@@ -91,6 +100,22 @@ impl Game {
         } else {
             let (first_p, shuffler_p) = self.curr_match.count_final_points();
             Some(todo!())
+        }
+    }
+    pub fn color_playing(&self) -> PlayerKind {
+        use PlayerKind as PK;
+        match (self.curr_match.turn, self.whose_first) {
+            (Turn::First,    PK::Purple) => PK::Purple,
+            (Turn::Shuffler, PK::Purple) => PK::Green,
+            (Turn::First,    PK::Green)  => PK::Green,
+            (Turn::Shuffler, PK::Green)  => PK::Purple,
+        }
+    }
+    pub fn toggle_whose_first(&mut self) {
+        use PlayerKind as PK;
+        match self.whose_first {
+            PK::Purple => self.whose_first = PK::Green,
+            PK::Green => self.whose_first = PK::Purple,
         }
     }
 }
@@ -374,6 +399,7 @@ impl Display for Turn {
 
 impl Display for Match {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
+        
         let s = format!(
 "-------------------
 Turn: '{}'
@@ -382,11 +408,11 @@ First has '{}' cards
 Shuffler has '{}' cards
 Table has cards: '{}'
 -------------------",
-                        self.turn,
-                        self.deck.len(), self.deck.len() / 6,
-                        self.player_first.curr_hand.len(),
-                        self.player_shuffler.curr_hand.len(),
-                        self.table.iter().map(|c| c.to_string()).collect::<Vec<String>>().join(" ; "),
+            self.turn,
+            self.deck.len(), self.deck.len() / 6,
+            self.player_first.curr_hand.len(),
+            self.player_shuffler.curr_hand.len(),
+            self.table.iter().map(|c| c.to_string()).collect::<Vec<String>>().join(" ; "),
         );
         write!(f, "{s}")
     }
@@ -398,6 +424,15 @@ impl Turn {
         match self {
             Self::First => *self = Self::Shuffler,
             Self::Shuffler => *self = Self::First,
+        }
+    }
+}
+
+impl Display for PlayerKind {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
+        match self {
+            PlayerKind::Purple => write!(f, "Purple"),
+            PlayerKind::Green  => write!(f, "Green"),
         }
     }
 }
