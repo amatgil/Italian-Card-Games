@@ -47,6 +47,7 @@ pub struct Game {
     pub green_points: usize,
     pub curr_match: Match,
     pub whose_first: PlayerKind,
+    pub who_won_last_round: Turn,
 }
 
 #[derive(Clone, Debug)]
@@ -72,6 +73,7 @@ impl Game {
             curr_match: Match::new(),
             purple_points: 0,
             green_points:  0,
+            who_won_last_round: Turn::First
         }
     }
 
@@ -98,10 +100,11 @@ impl Game {
     }
 
     /// Returns Option<(Purple points, green points)> in that order
-    pub fn is_match_over(&self) -> Option<(usize, usize)> {
+    pub fn is_match_over(&mut self) -> Option<(usize, usize)> {
         if !self.curr_match.is_over() {
             None
         } else {
+            self.give_table_to_last_taker();
             let (first_p, shuffler_p) = self.curr_match.count_final_points();
             if self.whose_first == PlayerKind::Purple {
                 Some((first_p, shuffler_p))
@@ -110,6 +113,18 @@ impl Game {
             }
         }
     }
+
+    pub fn give_table_to_last_taker(&mut self) {
+        let mut player = match self.who_won_last_round {
+            Turn::First    => &mut self.curr_match.player_first,
+            Turn::Shuffler => &mut self.curr_match.player_shuffler,
+        };
+
+        for _ in 0..self.curr_match.table.len() {
+            player.pile.push(self.curr_match.table.pop().unwrap());
+        }
+    }
+
     pub fn color_playing(&self) -> PlayerKind {
         use PlayerKind as PK;
         match (self.curr_match.turn, self.whose_first) {

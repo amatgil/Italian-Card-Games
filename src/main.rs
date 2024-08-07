@@ -11,7 +11,6 @@ fn main() {
         println!("{}", game.curr_match);
         print!("You current cards are: ");
         game.print_cards_of_curr_player();
-        dbg!(game.whose_first);
 
 
         println!("Waiting for input now....");
