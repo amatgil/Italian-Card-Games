@@ -2,6 +2,9 @@ use std::fmt::{Display, Formatter};
 use std::fmt::Debug;
 use std::cmp::Ordering;
 
+mod parse_move;
+use crate::parse_move::*;
+
 #[derive(Clone, Debug, Default)]
 pub struct Player {
     pub curr_hand: Vec<Card>, // Three or less held cards
@@ -72,7 +75,7 @@ impl Game {
         }
     }
 
-    pub fn make_move(&mut self, mov: &str) -> Result<(), MoveError> {
+    pub fn make_move<'a>(&'a mut self, mov: &'a str) -> Result<(), MoveError> {
         self.curr_match.make_move(mov)
     }
     pub fn toggle_turn(&mut self) {
@@ -99,7 +102,7 @@ impl Game {
             None
         } else {
             let (first_p, shuffler_p) = self.curr_match.count_final_points();
-            Some(todo!())
+            todo!()
         }
     }
     pub fn color_playing(&self) -> PlayerKind {
@@ -208,8 +211,8 @@ impl Match {
             && self.player_shuffler.curr_hand.is_empty()
     }
 
-    pub fn make_move(&mut self, input: &str) -> Result<(), MoveError> {
-        let mov = self.parse_move(input)?;
+    pub fn make_move<'a>(&'a mut self, input: &'a str) -> Result<(), MoveError> {
+        let mov = Self::parse_move(input)?;
 
         let player = match self.turn {
             Turn::First => &mut self.player_first,
@@ -245,11 +248,6 @@ impl Match {
         } else {
             Err(MoveError::MismatchedValues)
         }
-    }
-
-    // I'm too lazy to write another enum that's a subset of MoveError AND THEN impl From<>. I can just return it
-    fn parse_move(&self, mov: &str) -> Result<ParsedMove, MoveError> {
-        todo!()
     }
 
     fn count_final_points(&self) -> (usize, usize) {
@@ -310,7 +308,11 @@ impl Match {
         
         (fir_points, shuf_points)
     }
-
+    // I'm too lazy to write another enum that's a subset of MoveError AND THEN impl From<>. I can just return it
+    fn parse_move(mov: &str) -> Result<ParsedMove, MoveError> {
+        let (input, result) = parse_move_internal(mov).map_err(|e| MoveError::ParseError(e))?;
+        Ok(result)
+    }
 }
 
 pub fn has_full_napoli(pila: &[Card]) -> bool {
@@ -337,10 +339,10 @@ struct ParsedMove {
     to: Vec<usize>
 }
 
-#[derive(Clone, Debug, Copy)]
-pub enum MoveError {
+#[derive(Debug)]
+pub enum MoveError<'a> {
     /// Move could not be parsed
-    ParseError,
+    ParseError(nom::Err<nom::error::Error<&'a str>>),
     /// Index isn't a base 10 single-char digit
     InvalidDigit,
     /// When you try to play an ace but you don't have it
