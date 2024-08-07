@@ -136,10 +136,7 @@ impl Game {
     }
     pub fn toggle_whose_first(&mut self) {
         use PlayerKind as PK;
-        match self.whose_first {
-            PK::Purple => self.whose_first = PK::Green,
-            PK::Green  => self.whose_first = PK::Purple,
-        }
+        self.whose_first = !self.whose_first;
     }
     pub fn print_cards_of_curr_player(&self) {
         let cards = match self.curr_match.turn {
@@ -487,6 +484,17 @@ impl Display for PlayerKind {
         match self {
             PlayerKind::Purple => write!(f, "Purple"),
             PlayerKind::Green  => write!(f, "Green"),
+        }
+    }
+}
+
+impl std::ops::Not for PlayerKind {
+    type Output = Self;
+
+    fn not(self) -> Self {
+        match self {
+            Self::Purple => Self::Green,
+            Self::Green  => Self::Purple,
         }
     }
 }
