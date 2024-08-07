@@ -120,9 +120,10 @@ impl Game {
     }
 
     pub fn make_move<'a>(&'a mut self, mov: &'a str) -> Result<(), MoveError> {
-        if let Ok(Some(turn)) = self.curr_match.make_move(mov) {
+        if let Some(turn) = self.curr_match.make_move(mov)? {
             self.who_won_last_round = turn;
         }
+        Ok(())
     }
     pub fn toggle_turn(&mut self) {
         self.curr_match.turn.toggle_turn()
@@ -276,9 +277,9 @@ impl Match {
     /// Returns a Result, that means
     /// - Ok(Option<Turn>): Is Some if the last move was a take, None if it was placing on the table (for keeping track of the last person to take)
     /// - Err(...): Read the docs for MoveError
-    pub fn make_move<'a>(&'a mut self, input: &'a str) -> Result<Option<Turn>>, MoveError> {
+    pub fn make_move<'a>(&'a mut self, input: &'a str) -> Result<Option<Turn>, MoveError> {
         let mov = Self::parse_move(input)?;
-        let ret = None;
+        let mut ret = None;
 
         let player = match self.turn {
             Turn::First => &mut self.player_first,
