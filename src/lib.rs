@@ -214,8 +214,7 @@ impl Match {
     }
 
     pub fn is_over(&self) -> bool {
-        self.table.is_empty()
-            && self.deck.is_empty()
+        self.deck.is_empty()
             && self.player_first.curr_hand.is_empty()
             && self.player_shuffler.curr_hand.is_empty()
     }
@@ -246,8 +245,6 @@ impl Match {
 
                 // Remove it from hand
                 remove_elem_from_vec(&mut player.curr_hand, hand_card);
-
-                Ok(())
             } else if hand_card.value() == table_cards.iter().map(|c| c.value()).sum() {
                 for card in &table_cards {
                     player.pile.push(**card);
@@ -257,23 +254,27 @@ impl Match {
                 for i in to_indices.into_iter().rev() { self.table.remove(i); } // Remove them from the table
                 remove_elem_from_vec(&mut player.curr_hand, hand_card);
 
-
                 if self.table.len() == 0 { // Do we have a scopa (non-ace)?
                     player.scope += 1;
                 }
-
-                Ok(())
             } else {
-                Err(MoveError::MismatchedValues)
+                return Err(MoveError::MismatchedValues);
             }
         } else {
             // Place on table
             // TODO: make asso piglia tutto do the thingy instead of placing it when placing a card on the table (`N;` vs `-N` should be identical with an ace)
             self.table.push(hand_card);
             remove_elem_from_vec(&mut player.curr_hand, hand_card);
-            Ok(())
         }
 
+        if player.curr_hand.is_empty() && !self.deck.is_empty() {
+            // Redeal three cards from the deck
+            for _ in 0..3 {
+                let c = self.deck.pop().unwrap();
+                player.curr_hand.push(c);
+            }
+        }
+        Ok(())
     }
 
     fn count_final_points(&self) -> (usize, usize) {

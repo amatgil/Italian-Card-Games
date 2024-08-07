@@ -21,6 +21,7 @@ fn main() {
             continue;
         }
 
+        // TODO: Last to win takes everything in table
         if let Some((purp_p, gren_p)) = game.is_match_over() {
             println!("Match over: Purple got '{purp_p}' points, green got '{gren_p}'");
             println!("Starting new match....");
@@ -34,6 +35,7 @@ fn main() {
             println!("{player_name} has won with {win_p} points! The loser had {lose_p} points");
             break;
         }
+
 
         clear_term();
 
