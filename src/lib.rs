@@ -228,8 +228,8 @@ impl Match {
             Turn::Shuffler => &mut self.player_shuffler,
         };
 
-        let hand_card: &Card = player.curr_hand.get(mov.from)
-            .ok_or(MoveError::OutOfRangeOfHand)?;
+        let hand_card: Card = player.curr_hand.get(mov.from)
+            .ok_or(MoveError::OutOfRangeOfHand)?.clone();
 
         let table_cards: Vec<&Card> = mov.to.iter()
             .map(|&i| self.table.get(i))
@@ -241,18 +241,25 @@ impl Match {
             for _ in 0..self.table.len() {
                 player.pile.push(self.table.pop().unwrap());
             }
-            player.pile.push(*hand_card); // Don't forget the ace
+            player.pile.push(hand_card); // Don't forget the ace
+
+            // Remove it from hand
+            remove_elem_from_vec(&mut player.curr_hand, hand_card);
+
             Ok(())
         } else if hand_card.value() == table_cards.iter().map(|c| c.value()).sum() {
             for card in &table_cards {
                 player.pile.push(**card);
-                player.pile.push(*hand_card);
+                player.pile.push(hand_card);
             }
             for i in mov.to { self.table.remove(i); } // Remove them from the table
+            remove_elem_from_vec(&mut player.curr_hand, hand_card);
+
 
             if self.table.len() == 0 { // Do we have a scopa (non-ace)?
                 player.scope += 1;
             }
+
             Ok(())
         } else {
             Err(MoveError::MismatchedValues)
@@ -341,6 +348,11 @@ fn check_napoli(pila: &[Card], points: &mut usize) {
             *points += i;
         }
     }
+}
+
+fn remove_elem_from_vec<T>(v: &mut Vec<T>, elem: T) where T: PartialEq {
+    let index = v.iter().position(|x| x == &elem).unwrap();
+    v.remove(index);
 }
 
 struct ParsedMove {
