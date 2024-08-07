@@ -12,7 +12,7 @@ pub struct Player {
     pub scope: usize,         // nº of scope obtained
 }
 
-#[derive(Clone, Debug, Default, Copy)]
+#[derive(Clone, Debug, Default, Copy, PartialEq, Eq)]
 pub enum PlayerKind {
     #[default]
     Purple,
@@ -82,7 +82,7 @@ impl Game {
         self.curr_match.turn.toggle_turn()
     }
     pub fn winner(&self) -> Option<(&str, usize, usize)> {
-        let (purp, grep) = (self.purple_points, self.purple_points);
+        let (purp, grep) = (self.purple_points, self.green_points);
         let (purple_win, green_win) = (Some(("Purple", purp, grep)), Some(("Green",  grep, purp)));
 
         match (purp, grep) {
@@ -97,20 +97,25 @@ impl Game {
         }
     }
 
+    /// Returns Option<(Purple points, green points)> in that order
     pub fn is_match_over(&self) -> Option<(usize, usize)> {
         if !self.curr_match.is_over() {
             None
         } else {
             let (first_p, shuffler_p) = self.curr_match.count_final_points();
-            todo!()
+            if self.whose_first == PlayerKind::Purple {
+                Some((first_p, shuffler_p))
+            } else {
+                Some((shuffler_p, first_p))
+            }
         }
     }
     pub fn color_playing(&self) -> PlayerKind {
         use PlayerKind as PK;
         match (self.curr_match.turn, self.whose_first) {
             (Turn::First,    PK::Purple) => PK::Purple,
-            (Turn::Shuffler, PK::Purple) => PK::Green,
             (Turn::First,    PK::Green)  => PK::Green,
+            (Turn::Shuffler, PK::Purple) => PK::Green,
             (Turn::Shuffler, PK::Green)  => PK::Purple,
         }
     }
@@ -118,7 +123,7 @@ impl Game {
         use PlayerKind as PK;
         match self.whose_first {
             PK::Purple => self.whose_first = PK::Green,
-            PK::Green => self.whose_first = PK::Purple,
+            PK::Green  => self.whose_first = PK::Purple,
         }
     }
     pub fn print_cards_of_curr_player(&self) {
@@ -355,7 +360,7 @@ fn check_napoli(pila: &[Card], points: &mut usize) {
         if !pila.contains(&Card::denari(4)) { *points += 1; }
         else {
             let mut i = 4; // This goes all the way up, but players should only have up to 10/re
-            while pila.contains(&Card::denari(i)) { i += 1 }
+            while i <= 10 && pila.contains(&Card::denari(i)) { i += 1 }
             *points += i;
         }
     }
