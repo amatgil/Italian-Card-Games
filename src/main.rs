@@ -58,6 +58,9 @@ fn main() {
             continue;
         } else {
             use std::{thread, time};
+
+            clear_term();
+
             println!("Waiting 1.5 seconds before switching...");
             thread::sleep(time::Duration::from_millis(1500));
             game.toggle_turn();
