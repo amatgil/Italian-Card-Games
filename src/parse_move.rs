@@ -1,6 +1,6 @@
 use nom::{
     IResult,
-    bytes::complete::{tag, take_until1},
+    bytes::complete::tag,
     multi::separated_list0,
     branch::alt,
 };

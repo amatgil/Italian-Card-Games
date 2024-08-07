@@ -46,7 +46,7 @@ pub struct Game {
     pub purple_points: usize, // Host, probably
     pub green_points: usize,
     pub curr_match: Match,
-    pub whose_first: PlayerKind,
+    pub who_is_first: PlayerKind,
     pub who_won_last_round: Turn,
 }
 
@@ -59,17 +59,59 @@ pub struct Match {
     pub table: Vec<Card>
 }
 
-#[derive(Clone, Copy, Debug, Default)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum Turn {
     #[default]
     First,
     Shuffler
 }
 
+#[derive(Clone, Debug, Default)]
+pub struct PointTally {
+    scope_first: usize,
+    scope_shuf: usize,
+    num_cards: Option<Turn>,
+    num_denari: Option<Turn>,
+    sette_bello: Turn,
+    re_bello: Turn,
+    napoli: Option<(Turn, usize)>,
+    primiera: Option<Turn>,
+}
+
+impl PointTally {
+    pub fn first_points(&self) -> usize {
+        count_points(self, Turn::First)
+    }
+    pub fn shuf_points(&self) -> usize {
+        count_points(self, Turn::Shuffler)
+    }
+}
+
+fn count_points(tally: &PointTally, turn: Turn) -> usize {
+    let mut p = 0;
+
+    if turn == Turn::First { p += tally.scope_first }
+    else                   { p += tally.scope_shuf }
+
+    p += [
+        tally.num_cards   == Some(turn),
+        tally.num_denari  == Some(turn),
+        tally.sette_bello == turn,
+        tally.re_bello    == turn, 
+        tally.primiera    == Some(turn),
+    ].into_iter().filter(|&b| b).count();
+
+    if let Some((napoli_turn, amount)) = tally.napoli {
+        if napoli_turn == turn { p += amount }
+    }
+
+    p
+}
+
 impl Game {
     pub fn new() -> Game {
         Game {
-            whose_first: PlayerKind::Purple,
+            who_is_first: PlayerKind::Purple,
             curr_match: Match::new(),
             purple_points: 0,
             green_points:  0,
@@ -99,18 +141,12 @@ impl Game {
         }
     }
 
-    /// Returns Option<(Purple points, green points)> in that order
-    pub fn is_match_over(&mut self) -> Option<(usize, usize)> {
+    pub fn is_match_over(&mut self) -> Option<PointTally> {
         if !self.curr_match.is_over() {
             None
         } else {
             self.give_table_to_last_taker();
-            let (first_p, shuffler_p) = self.curr_match.count_final_points();
-            if self.whose_first == PlayerKind::Purple {
-                Some((first_p, shuffler_p))
-            } else {
-                Some((shuffler_p, first_p))
-            }
+            Some(self.curr_match.tally_final_points())
         }
     }
 
@@ -127,7 +163,7 @@ impl Game {
 
     pub fn color_playing(&self) -> PlayerKind {
         use PlayerKind as PK;
-        match (self.curr_match.turn, self.whose_first) {
+        match (self.curr_match.turn, self.who_is_first) {
             (Turn::First,    PK::Purple) => PK::Purple,
             (Turn::First,    PK::Green)  => PK::Green,
             (Turn::Shuffler, PK::Purple) => PK::Green,
@@ -135,8 +171,7 @@ impl Game {
         }
     }
     pub fn toggle_whose_first(&mut self) {
-        use PlayerKind as PK;
-        self.whose_first = !self.whose_first;
+        self.who_is_first = !self.who_is_first;
     }
     pub fn print_cards_of_curr_player(&self) {
         let cards = match self.curr_match.turn {
@@ -294,65 +329,72 @@ impl Match {
         Ok(())
     }
 
-    fn count_final_points(&self) -> (usize, usize) {
-        let mut fir_points = 0;
-        let mut shuf_points = 0;
+    fn tally_final_points(&self) -> PointTally {
+        let mut tally = PointTally::default();
 
         let fir = &self.player_first.pile;
         let shuf = &self.player_shuffler.pile;
 
+        tally.scope_first = self.player_first.scope;
+        tally.scope_shuf = self.player_shuffler.scope;
+
         // Number of cards
         match fir.len().cmp(&shuf.len()) {
-            Ordering::Greater  => fir_points += 1,
-            Ordering::Equal    => {},
-            Ordering::Less     => shuf_points += 1,
+            Ordering::Greater  => tally.num_cards = Some(Turn::First),
+            Ordering::Equal    => tally.num_cards = None,
+            Ordering::Less     => tally.num_cards = Some(Turn::Shuffler),
         }
 
         // Number of Denari (monee monee monee)
         match fir.iter().filter(|c| c.suit == Suit::Denari).count()
             .cmp(&shuf.iter().filter(|c| c.suit == Suit::Denari).count()) {
-            Ordering::Greater  => fir_points += 1,
-            Ordering::Equal    => {},
-            Ordering::Less     => shuf_points += 1,
+            Ordering::Greater  => tally.num_denari = Some(Turn::First),
+            Ordering::Equal    => tally.num_denari = None,
+            Ordering::Less     => tally.num_denari = Some(Turn::Shuffler),
         }
 
         // Who has 7 bello
         if fir.iter().position(|c| c == &Card::denari(7)).is_some() {
-            fir_points += 1;
+            tally.sette_bello = Turn::First;
         } else {
-            shuf_points += 1;
+            tally.sette_bello = Turn::Shuffler;
         }
 
         // Who has king bello
         if fir.iter().position(|c| c == &Card::denari(10 /* Re */)).is_some() {
-            fir_points += 1;
+            tally.re_bello = Turn::First;
         } else {
-            shuf_points += 1;
+            tally.re_bello = Turn::Shuffler;
         }
 
         // Napoli 
-        check_napoli(&fir, &mut fir_points);
-        check_napoli(&shuf, &mut shuf_points);
+        if let Some(p) = check_napoli(&fir) {
+            tally.napoli = Some((Turn::First, p));
+        } else if let Some(p) = check_napoli(&shuf) {
+            tally.napoli = Some((Turn::Shuffler, p));
+        } else {
+            tally.napoli = None;
+        }
 
         // Primiera (7s thing (just counting))
         let mut i = 7;
         while i > 0 {
             match cards_with_value(i, fir).cmp(&cards_with_value(i, shuf)) {
                 Ordering::Greater => {
-                    fir_points += 1;
+                    tally.primiera = Some(Turn::First);
                     break;
                 },
                 Ordering::Equal   => i -= 1,
                 Ordering::Less    => {
-                    shuf_points += 1;
+                    tally.primiera = Some(Turn::Shuffler);
                     break;
                 }
             }
         }
         
-        (fir_points, shuf_points)
+        tally
     }
-    // I'm too lazy to write another enum that's a subset of MoveError AND THEN impl From<>. I can just return it
+
     fn parse_move(mov: &str) -> Result<ParsedMove, MoveError> {
         let (input, result) = parse_move_internal(mov).map_err(|e| MoveError::ParseError(e))?;
         Ok(result)
@@ -367,15 +409,19 @@ fn cards_with_value(target_value: usize, cards: &[Card]) -> usize {
     cards.iter().filter(|c| c.value() == target_value).count()
 }
 
-fn check_napoli(pila: &[Card], points: &mut usize) {
+fn check_napoli(pila: &[Card]) -> Option<usize> {
     if [1, 2, 3].iter().all(|&i| pila.contains(&Card::denari(i))) {
-        if !pila.contains(&Card::denari(4)) { *points += 1; }
-        else {
+        if !pila.contains(&Card::denari(4)) {
+            Some(1)
+        } else {
             let mut i = 4; // This goes all the way up, but players should only have up to 10/re
-            while i <= 10 && pila.contains(&Card::denari(i)) { i += 1 }
-            *points += i;
+            while i < 10 && pila.contains(&Card::denari(i)) { i += 1 }
+            Some(i)
         }
+    } else {
+        None
     }
+    
 }
 
 fn remove_elem_from_vec<T>(v: &mut Vec<T>, elem: T) where T: PartialEq {
@@ -496,5 +542,28 @@ impl std::ops::Not for PlayerKind {
             Self::Purple => Self::Green,
             Self::Green  => Self::Purple,
         }
+    }
+}
+
+
+impl Display for PointTally {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
+        write!(f,
+               "First's scope:\t\t\t{},
+Shuf's scope:\t\t\t{},
+Nº cards:\t\t\t{},
+Nº denari\t\t\t{},
+Sette bello:\t\t\t{},
+Re bello:\t\t\t{},
+Napoli:  \t\t\t{},
+Primiera:\t\t\t{}",
+               self.scope_first, self.scope_shuf,
+               self.num_cards.and_then(|n| Some(n.to_string())).unwrap_or("Nobody".to_string()),
+               self.num_denari.and_then(|n| Some(n.to_string())).unwrap_or("Nobody".to_string()),
+               self.sette_bello,
+               self.re_bello,
+               self.napoli.and_then(|(t, n)| Some(format!("{t} ({n})"))).unwrap_or("Nobody".to_string()),
+               self.primiera.and_then(|n| Some(n.to_string())).unwrap_or("Nobody".to_string()),
+        )
     }
 }

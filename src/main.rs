@@ -23,18 +23,24 @@ fn main() {
             continue;
         }
 
-        if let Some((purp_p, gren_p)) = game.is_match_over() {
+        if let Some(tally) = game.is_match_over() {
+            let (purp_p, gren_p) = match game.who_is_first {
+                PlayerKind::Purple => (tally.first_points(), tally.shuf_points()),
+                PlayerKind::Green  => (tally.shuf_points(), tally.first_points()),
+            };
             println!("Match over: Purple got '{purp_p}' points, Green got '{gren_p}'");
+            println!();
+            println!("The breakdown is:\n{}\n", tally);
             game.purple_points += purp_p;
             game.green_points  += gren_p;
 
             // Full napoli takes preference over normal winner
             if has_full_napoli(&game.curr_match.player_first.pile) {
-                println!("{} has achieved a full napoli: they win. What a nerd lmfao", game.whose_first);
+                println!("{} has achieved a full napoli: they win. What a nerd lmfao", game.who_is_first);
                 break;
             }
             else if has_full_napoli(&game.curr_match.player_shuffler.pile) {
-                println!("{} has achieved a full napoli: they win. What a nerd lmfao", !game.whose_first);
+                println!("{} has achieved a full napoli: they win. What a nerd lmfao", !game.who_is_first);
                 break;
             }
             else if let Some((player_name, win_p, lose_p)) = game.winner() {
@@ -51,6 +57,9 @@ fn main() {
 
             continue;
         } else {
+            use std::{thread, time};
+            println!("Waiting 1.5 seconds before switching...");
+            thread::sleep(time::Duration::from_millis(1500));
             game.toggle_turn();
         }
 
