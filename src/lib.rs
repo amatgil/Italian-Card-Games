@@ -231,39 +231,49 @@ impl Match {
         let hand_card: Card = player.curr_hand.get(mov.from)
             .ok_or(MoveError::OutOfRangeOfHand)?.clone();
 
-        let table_cards: Vec<&Card> = mov.to.iter()
-            .map(|&i| self.table.get(i))
-            .collect::<Option<Vec<&Card>>>()
-            .ok_or(MoveError::OutOfRangeOfTable)?;
+        if let Some(to_indices) = mov.to {
+            let table_cards: Vec<&Card> = to_indices.iter()
+                .map(|&i| self.table.get(i))
+                .collect::<Option<Vec<&Card>>>()
+                .ok_or(MoveError::OutOfRangeOfTable)?;
 
-        if hand_card.number == CardNum::Numeric(1) {
-            // We have an ace, we get everything (including itself)
-            for _ in 0..self.table.len() {
-                player.pile.push(self.table.pop().unwrap());
+            if hand_card.number == CardNum::Numeric(1) {
+                // We have an ace, we get everything (including itself)
+                for _ in 0..self.table.len() {
+                    player.pile.push(self.table.pop().unwrap());
+                }
+                player.pile.push(hand_card); // Don't forget the ace
+
+                // Remove it from hand
+                remove_elem_from_vec(&mut player.curr_hand, hand_card);
+
+                Ok(())
+            } else if hand_card.value() == table_cards.iter().map(|c| c.value()).sum() {
+                for card in &table_cards {
+                    player.pile.push(**card);
+                    player.pile.push(hand_card);
+                }
+
+                for i in to_indices.into_iter().rev() { self.table.remove(i); } // Remove them from the table
+                remove_elem_from_vec(&mut player.curr_hand, hand_card);
+
+
+                if self.table.len() == 0 { // Do we have a scopa (non-ace)?
+                    player.scope += 1;
+                }
+
+                Ok(())
+            } else {
+                Err(MoveError::MismatchedValues)
             }
-            player.pile.push(hand_card); // Don't forget the ace
-
-            // Remove it from hand
-            remove_elem_from_vec(&mut player.curr_hand, hand_card);
-
-            Ok(())
-        } else if hand_card.value() == table_cards.iter().map(|c| c.value()).sum() {
-            for card in &table_cards {
-                player.pile.push(**card);
-                player.pile.push(hand_card);
-            }
-            for i in mov.to { self.table.remove(i); } // Remove them from the table
-            remove_elem_from_vec(&mut player.curr_hand, hand_card);
-
-
-            if self.table.len() == 0 { // Do we have a scopa (non-ace)?
-                player.scope += 1;
-            }
-
-            Ok(())
         } else {
-            Err(MoveError::MismatchedValues)
+            // Place on table
+            // TODO: make asso piglia tutto do the thingy instead of placing it when placing a card on the table (`N;` vs `-N` should be identical with an ace)
+            self.table.push(hand_card);
+            remove_elem_from_vec(&mut player.curr_hand, hand_card);
+            Ok(())
         }
+
     }
 
     fn count_final_points(&self) -> (usize, usize) {
@@ -357,7 +367,7 @@ fn remove_elem_from_vec<T>(v: &mut Vec<T>, elem: T) where T: PartialEq {
 
 struct ParsedMove {
     from: usize,
-    to: Vec<usize>
+    to: Option<Vec<usize>>
 }
 
 #[derive(Debug)]

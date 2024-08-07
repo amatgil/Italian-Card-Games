@@ -10,7 +10,8 @@ Possible moves (letters represent numbers):
 - `a;B`: `a`'s value is equal to `B`'s value and they both get added to their pile
 - `a;B+C`: `a`'s value is `B`'s + `C`'s
 - `a;B+C+D`: same as above, no limit
-- `a`: `a` is an ace, player gets all cards (we're playing by `asso pigllia tutto')
+- `a;`: `a` is an ace, player gets all cards (we're playing by `asso pigllia tutto`)
+- `ta;`: place down card at index `a` on `t`able (that's why it's a `t`)
 
 
 ## Rules
