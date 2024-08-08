@@ -1,10 +1,28 @@
 use scopa::*;
+use std::io::stdin;
 
 fn main() {
+    let mut input = String::new();
     let mut game = Game::new();
 
+    println!(
+r#"Welcome to...
+                           _
+ ___  ___ ___  _ __   __ _| |
+/ __|/ __/ _ \| '_ \ / _` | |
+\__ \ (_| (_) | |_) | (_| |_|
+|___/\___\___/| .__/ \__,_(_)
+              |_|
+
+The best game ever made, wooo
+
+
+Press the Any button to begin...
+"#);
+
+    stdin().read_line(&mut input).expect("Could not read from stdin");
+    clear_term();
     loop {
-        let mut input = String::new();
 
         println!("Current player is: '{}'", game.color_playing());
         println!("Score is: {} '{}' - '{}' {}", purple_text(), game.purple_points, game.green_points, green_text());
@@ -14,7 +32,7 @@ fn main() {
 
 
         println!("Waiting for input now....");
-        std::io::stdin().read_line(&mut input).expect("Could not read from stdin");
+        stdin().read_line(&mut input).expect("Could not read from stdin");
         input = input.trim().to_string();
 
         if let Err(e) = game.make_move(&input) {
@@ -24,6 +42,7 @@ fn main() {
         }
 
         if let Some(tally) = game.is_match_over() {
+            clear_term();
             let (purp_p, gren_p) = match game.who_is_first {
                 PlayerKind::Purple => (tally.first_points(), tally.shuf_points()),
                 PlayerKind::Green  => (tally.shuf_points(), tally.first_points()),
@@ -33,6 +52,9 @@ fn main() {
             println!("The breakdown is:\n{}\n", tally);
             game.purple_points += purp_p;
             game.green_points  += gren_p;
+            println!("Updated running score is: {} '{}' - '{}' {}\n",
+                     purple_text(), game.purple_points,
+                     game.green_points, green_text());
 
             // Full napoli takes preference over normal winner
             if has_full_napoli(&game.curr_match.player_first.pile) {
@@ -53,7 +75,7 @@ fn main() {
             game.curr_match = Match::new();
 
             println!("Press any button to start the next match...");
-            std::io::stdin().read_line(&mut input).expect("Could not read from stdin");
+            stdin().read_line(&mut input).expect("Could not read from stdin");
 
             continue;
         } else {
