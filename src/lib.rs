@@ -182,14 +182,14 @@ impl Game {
             Turn::Shuffler => &self.curr_match.player_shuffler.curr_hand,
         };
 
-        let s: String = cards.iter().map(|c| c.to_string()).collect::<Vec<String>>().join(" ; ");
+        let s: String = cards.iter().enumerate().map(|(i, c)| format!("{c}({i})")).collect::<Vec<String>>().join(" ; ");
         println!("{s}");
     }
 }
 
 impl Card {
     pub fn new(suit: Suit, n: usize) -> Card {
-        match n { // "dc" as in "Denari card"
+        match n {
             1..=7 => Card { suit, number: CardNum::Numeric(n) },
             8     => Card { suit, number: CardNum::Fante },
             9     => Card { suit, number: CardNum::Cavallo },
@@ -466,6 +466,7 @@ pub enum MoveError<'a> {
 impl Display for CardNum {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
         match self {
+            CardNum::Numeric(1) => write!(f, "A"),
             CardNum::Numeric(n) => write!(f, "{n}"),
             CardNum::Fante      => write!(f, "🧍"),
             CardNum::Cavallo    => write!(f, "🐴"),
@@ -520,7 +521,7 @@ Table has cards: '{}'
             self.deck.len(), self.deck.len() / 6,
             self.player_first.curr_hand.len(),
             self.player_shuffler.curr_hand.len(),
-            self.table.iter().map(|c| c.to_string()).collect::<Vec<String>>().join(" ; "),
+            self.table.iter().enumerate().map(|(i, c)| format!("{c}({i})")).collect::<Vec<String>>().join(" ; "),
         );
         write!(f, "{s}")
     }
