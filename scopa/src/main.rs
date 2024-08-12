@@ -1,4 +1,5 @@
 use scopa::*;
+use core::*;
 use std::io::stdin;
 
 fn main() {

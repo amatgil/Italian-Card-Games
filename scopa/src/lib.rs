@@ -4,11 +4,12 @@ use std::cmp::Ordering;
 
 mod parse_move;
 use crate::parse_move::*;
+use core::*;
 
 #[derive(Clone, Debug, Default)]
 pub struct Player {
     pub curr_hand: Vec<Card>, // Three or less held cards
-    pub pile: Vec<Card>,      // Cards that they've won
+    pub pile: Deck,           // Cards that they've won
     pub scope: usize,         // nº of scope obtained
 }
 
@@ -18,29 +19,6 @@ pub enum PlayerKind {
     Purple,
     Green
 }
-
-#[derive(Clone, Copy, PartialEq, Eq)]
-pub struct Card {
-    pub suit: Suit,
-    pub number: CardNum
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Suit {
-    Denari,
-    Coppe,
-    Bastoni,
-    Spade, 
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum CardNum {
-    Numeric(usize),
-    Fante,
-    Cavallo,
-    Re
-}
-
 #[derive(Clone, Debug)]
 pub struct Game {
     pub purple_points: usize, // Host, probably
@@ -63,8 +41,8 @@ pub struct Match {
     pub turn: Turn,
     pub player_first: Player,
     pub player_shuffler: Player,
-    pub deck: Vec<Card>,
-    pub table: Vec<Card>
+    pub deck: Deck,
+    pub table: Deck,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -99,14 +77,13 @@ fn count_points(tally: &PointTally, turn: Turn) -> usize {
     let mut p = 0;
 
     if turn == Turn::First { p += tally.scope_first }
-    else                   { p += tally.scope_shuf }
+    else { p += tally.scope_shuf }
 
-    p += [
-        tally.num_cards   == Some(turn),
-        tally.num_denari  == Some(turn),
-        tally.sette_bello == turn,
-        tally.re_bello    == turn, 
-        tally.primiera    == Some(turn),
+    p += [tally.num_cards   == Some(turn),
+          tally.num_denari  == Some(turn),
+          tally.sette_bello == turn,
+          tally.re_bello    == turn, 
+          tally.primiera    == Some(turn),
     ].into_iter().filter(|&b| b).count();
 
     if let Some((napoli_turn, amount)) = tally.napoli {
@@ -170,7 +147,7 @@ impl Game {
         };
 
         for _ in 0..self.curr_match.table.len() {
-            player.pile.push(self.curr_match.table.pop().unwrap());
+            player.pile.push_to_top(self.curr_match.table.take_from_top().unwrap());
         }
     }
 
@@ -197,62 +174,6 @@ impl Game {
     }
 }
 
-impl Card {
-    pub fn new(suit: Suit, n: usize) -> Card {
-        match n {
-            1..=7 => Card { suit, number: CardNum::Numeric(n) },
-            8     => Card { suit, number: CardNum::Fante },
-            9     => Card { suit, number: CardNum::Cavallo },
-            10    => Card { suit, number: CardNum::Re },
-            _     => panic!("Tried to make a card that's greater than 10"),
-        }
-    }
-
-    pub fn denari(n: usize) -> Card {
-        match n { 
-            1..=7 => Card { suit: Suit::Denari, number: CardNum::Numeric(n) },
-            8     => Card { suit: Suit::Denari, number: CardNum::Fante },
-            9     => Card { suit: Suit::Denari, number: CardNum::Cavallo },
-            10    => Card { suit: Suit::Denari, number: CardNum::Re },
-            _     => panic!("Tried to make a card that's greater than 10")
-        }
-    }
-
-    pub fn value(&self) -> usize {
-        match self.number {
-            CardNum::Numeric(n) => n,
-            CardNum::Fante      => 8,
-            CardNum::Cavallo    => 9,
-            CardNum::Re         => 10,
-        }
-    }
-
-    pub fn shuffled_deck() -> Vec<Card> {
-        let numbers = [CardNum::Numeric(1), CardNum::Numeric(2), CardNum::Numeric(3),
-                       CardNum::Numeric(4), CardNum::Numeric(5), CardNum::Numeric(6),
-                       CardNum::Numeric(7), CardNum::Fante, CardNum::Cavallo, CardNum::Re];
-
-        let suits = [Suit::Denari, Suit::Coppe, Suit::Bastoni, Suit::Spade];
-
-        let mut deck = Vec::with_capacity(numbers.len()*suits.len());
-        for number in numbers {
-            for suit in suits {
-                deck.push(Card { number, suit  } )
-            }
-        }
-
-        // Shuffle the deck (Fisher-Yates my beloved)
-        use rand::Rng;
-        let mut rng = rand::thread_rng();
-
-        for i in (1..deck.len()).rev() {
-            let j = rng.gen_range(0..=i);
-            deck.swap(i, j);
-        }
-
-        deck
-    }
-}
 
 
 impl Match {
@@ -263,16 +184,16 @@ impl Match {
         let mut player_shuffler = Player::default();
 
         for _ in 0..3 {
-            let (c1, c2) = (deck.pop().unwrap(), deck.pop().unwrap());
+            let (c1, c2) = (deck.take_from_top().unwrap(), deck.take_from_top().unwrap());
 
             player_first.curr_hand.push(c1);
             player_shuffler.curr_hand.push(c2);
         }
 
-        let mut table = Vec::new();
+        let mut table = Deck::default();
         for _ in 0..4 {
-            let c = deck.pop().unwrap();
-            table.push(c);
+            let c = deck.take_from_top().unwrap();
+            table.push_to_top(c);
         }
 
         Match { player_first, player_shuffler, deck, table, turn: Turn::First }
@@ -315,17 +236,17 @@ impl Match {
                 });
 
                 for _ in 0..self.table.len() {
-                    player.pile.push(self.table.pop().unwrap());
+                    player.pile.push_to_top(self.table.take_from_top().unwrap());
                 }
-                player.pile.push(hand_card); // Don't forget the ace
+                player.pile.push_to_top(hand_card); // Don't forget the ace
 
                 // Remove it from hand
                 remove_elem_from_vec(&mut player.curr_hand, hand_card);
 
             } else if hand_card.value() == table_cards.iter().map(|c| c.value()).sum() {
                 for card in &table_cards {
-                    player.pile.push(**card);
-                    player.pile.push(hand_card);
+                    player.pile.push_to_top(**card);
+                    player.pile.push_to_top(hand_card);
                 }
                 last_move = Some(Move {
                     card_played: hand_card,
@@ -351,14 +272,14 @@ impl Match {
                 cards_taken: None,
                 turn: self.turn,
             });
-            self.table.push(hand_card);
+            self.table.push_to_top(hand_card);
             remove_elem_from_vec(&mut player.curr_hand, hand_card);
         }
 
         if player.curr_hand.is_empty() && !self.deck.is_empty() {
             // Redeal three cards from the deck
             for _ in 0..3 {
-                let c = self.deck.pop().unwrap();
+                let c = self.deck.take_from_top().unwrap();
                 player.curr_hand.push(c);
             }
         }
@@ -437,15 +358,15 @@ impl Match {
     }
 }
 
-pub fn has_full_napoli(pila: &[Card]) -> bool {
+pub fn has_full_napoli(pila: &Deck) -> bool {
     (1..=10).all(|i| pila.contains(&Card::denari(i)))
 }
 
-fn cards_with_value(target_value: usize, cards: &[Card]) -> usize {
+fn cards_with_value(target_value: usize, cards: &Deck) -> usize {
     cards.iter().filter(|c| c.value() == target_value).count()
 }
 
-fn check_napoli(pila: &[Card]) -> Option<usize> {
+fn check_napoli(pila: &Deck) -> Option<usize> {
     if [1, 2, 3].iter().all(|&i| pila.contains(&Card::denari(i))) {
         if !pila.contains(&Card::denari(4)) {
             Some(1)
@@ -486,40 +407,6 @@ pub enum MoveError<'a> {
     OutOfRangeOfHand,
     /// At least one of the table indices was out of range 
     OutOfRangeOfTable,
-}
-
-impl Display for CardNum {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
-        match self {
-            CardNum::Numeric(1) => write!(f, "A"),
-            CardNum::Numeric(n) => write!(f, "{n}"),
-            CardNum::Fante      => write!(f, "🧍"),
-            CardNum::Cavallo    => write!(f, "🐴"),
-            CardNum::Re         => write!(f, "👑"),
-        }
-    }
-}
-
-impl Display for Suit {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
-        match self {
-            Suit::Denari  => write!(f, "💲"),
-            Suit::Coppe   => write!(f, "🏆"),
-            Suit::Bastoni => write!(f, "🪵"),
-            Suit::Spade   => write!(f, "⚔️"),
-        }
-    }
-}
-
-impl Debug for Card {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
-        write!(f, "{}{}", self.number, self.suit)
-    }
-}
-impl Display for Card {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
-        write!(f, "{}{}", self.number, self.suit)
-    }
 }
 
 impl Display for Turn {
