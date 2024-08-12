@@ -35,11 +35,14 @@ Press the Any button to begin...
         stdin().read_line(&mut input).expect("Could not read from stdin");
         input = input.trim().to_string();
 
-        if let Err(e) = game.make_move(&input) {
-            clear_term();
-            println!("move error: {e:?}");
-            continue;
-        }
+        let move_made = match game.make_move(&input) {
+            Ok(mov) => mov,
+            Err(e) => {
+                clear_term();
+                println!("move error: {e:?}");
+                continue;
+            },
+        };
 
         if let Some(tally) = game.is_match_over() {
             clear_term();
@@ -88,6 +91,7 @@ Press the Any button to begin...
             game.toggle_turn();
         }
         clear_term();
+        println!("The last player just played: '{}'\n\n", move_made.map(|m| m.to_string()).unwrap_or("No previous move".to_string()));
     }
 }
 

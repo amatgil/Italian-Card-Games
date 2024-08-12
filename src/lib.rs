@@ -48,6 +48,14 @@ pub struct Game {
     pub curr_match: Match,
     pub who_is_first: PlayerKind,
     pub who_won_last_round: Turn,
+    pub last_move: Option<Move>,
+}
+
+#[derive(Clone, Debug)]
+pub struct Move {
+    pub turn: Turn,
+    pub card_played: Card,
+    pub cards_taken: Option<Vec<Card>>,
 }
 
 #[derive(Clone, Debug)]
@@ -115,15 +123,17 @@ impl Game {
             curr_match: Match::new(),
             purple_points: 0,
             green_points:  0,
-            who_won_last_round: Turn::First
+            who_won_last_round: Turn::First,
+            last_move: None
         }
     }
 
-    pub fn make_move<'a>(&'a mut self, mov: &'a str) -> Result<(), MoveError> {
-        if let Some(turn) = self.curr_match.make_move(mov)? {
-            self.who_won_last_round = turn;
+    pub fn make_move<'a>(&'a mut self, mov: &'a str) -> Result<Option<Move>, MoveError> {
+        let m = self.curr_match.make_move(mov)?;
+        if let Some(move_made) = &m {
+            self.who_won_last_round = move_made.turn;
         }
-        Ok(())
+        Ok(m)
     }
     pub fn toggle_turn(&mut self) {
         self.curr_match.turn.toggle_turn()
@@ -277,9 +287,9 @@ impl Match {
     /// Returns a Result, that means
     /// - Ok(Option<Turn>): Is Some if the last move was a take, None if it was placing on the table (for keeping track of the last person to take)
     /// - Err(...): Read the docs for MoveError
-    pub fn make_move<'a>(&'a mut self, input: &'a str) -> Result<Option<Turn>, MoveError> {
+    pub fn make_move<'a>(&'a mut self, input: &'a str) -> Result<Option<Move>, MoveError> {
         let mov = Self::parse_move(input)?;
-        let mut ret = None;
+        let last_move;
 
         let player = match self.turn {
             Turn::First => &mut self.player_first,
@@ -297,6 +307,13 @@ impl Match {
 
             if hand_card.number == CardNum::Numeric(1) {
                 // We have an ace, we get everything (including itself)
+
+                last_move = Some(Move {
+                    card_played: hand_card,
+                    cards_taken: Some(self.table.iter().map(|c| c.clone()).collect()),
+                    turn: self.turn,
+                });
+
                 for _ in 0..self.table.len() {
                     player.pile.push(self.table.pop().unwrap());
                 }
@@ -305,12 +322,16 @@ impl Match {
                 // Remove it from hand
                 remove_elem_from_vec(&mut player.curr_hand, hand_card);
 
-                ret = Some(self.turn);
             } else if hand_card.value() == table_cards.iter().map(|c| c.value()).sum() {
                 for card in &table_cards {
                     player.pile.push(**card);
                     player.pile.push(hand_card);
                 }
+                last_move = Some(Move {
+                    card_played: hand_card,
+                    cards_taken: Some(table_cards.iter().map(|&c| c.clone()).collect()),
+                    turn: self.turn,
+                });
 
                 for i in to_indices.into_iter().rev() { self.table.remove(i); } // Remove them from the table
                 remove_elem_from_vec(&mut player.curr_hand, hand_card);
@@ -319,13 +340,17 @@ impl Match {
                     player.scope += 1;
                 }
 
-                ret = Some(self.turn);
             } else {
                 return Err(MoveError::MismatchedValues);
             }
         } else {
             // Place on table
             // TODO: make asso piglia tutto do the thingy instead of placing it when placing a card on the table (`N;` vs `tN` should be identical with an ace)
+            last_move = Some(Move {
+                card_played: hand_card,
+                cards_taken: None,
+                turn: self.turn,
+            });
             self.table.push(hand_card);
             remove_elem_from_vec(&mut player.curr_hand, hand_card);
         }
@@ -337,7 +362,7 @@ impl Match {
                 player.curr_hand.push(c);
             }
         }
-        Ok(ret)
+        Ok(last_move)
     }
 
     fn tally_final_points(&self) -> PointTally {
@@ -596,3 +621,18 @@ pub fn purple_text() -> String {
 pub fn green_text() -> String {
     format!("{0}[38;5;34mGreen{0}[0m", 27 as char)
 }
+
+impl Display for Move {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
+        match &self.cards_taken {
+            None => write!(f, "{} placed {} on the table",
+                           self.turn,
+                           self.card_played),
+            Some(tables) => write!(f, "{} took {} with {}",
+                                   self.turn,
+                                   tables.iter().map(|c| c.to_string()).collect::<Vec<String>>().join("+"),
+                                   self.card_played),
+        }
+    }
+}
+
