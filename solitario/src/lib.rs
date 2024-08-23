@@ -18,6 +18,20 @@ struct Pile {
 }
 
 
+impl Pile {
+    /// Get the card that's closest to the top of the table (as in, has the highest value)
+    /// Assumes that `self.revealed > 0`
+    fn get_head_of_revealed(&self) -> Option<&Card> {
+        if self.cards.is_empty() { None }
+        else {
+            Some(&self.cards[self.cards.len() - self.revealed])
+        }
+    }
+    /// Get the card that's closest to the bottom of the table (as in, has the lowest value)
+    fn get_tail_of_revealed(&self) -> Option<&Card> {
+        self.cards.iter().last() // O(n) but they won't get to 8, it's whatever
+    }
+}
 impl Table {
     pub fn new() -> Self {
         let mut deck = Card::shuffled_french_deck();
@@ -36,6 +50,61 @@ impl Table {
                aces: std::array::from_fn(|_i| Pile::default())
         }
     }
+    pub fn move_pile(&mut self, from_idx: usize, to_idx: usize) -> Result<(), ()> {
+        if from_idx >= 7 || to_idx >= 7 { return Err(()) }; // TODO: Make an error enum and whatever
+
+        // We clone because we can't `&mut` them both at once, we'll reassign back if we're on the
+        // happy path
+        let mut from = self.piles[from_idx].clone();
+        let mut to   = self.piles[to_idx].clone();
+
+        let Some(from_head) = from.get_head_of_revealed() else { return Err(()) };
+        let Some(to_tail)   = to.get_tail_of_revealed()   else { return Err(()) }; 
+
+
+        // TODO: Make sure you can move the king to an empty pile (always, no matter the suit)
+        if legality_check(from_head, to_tail) {
+            eprintln!("Legality check passed: {} and {}", from_head, to_tail);
+            for _ in 0..from.revealed {
+                let c = from.cards.remove(from.revealed);
+                to.cards.push(c);
+            }
+
+
+            to.revealed += from.revealed;
+            from.revealed = 0;
+
+            //todo!("Move pile over AND UPDATE REVEALED COUNT");
+
+            // We were on the happy path, we must reassign back
+            self.piles[from_idx] = from;
+            self.piles[to_idx] = to;
+            Ok(())
+        } else {
+            Err(()) // Illegal move
+        }
+    }
+}
+
+// Denari and spade are red, coppe and bastoni are black. They must alternate
+fn legality_check(added: &Card, base: &Card) -> bool {
+    let red_suits = [Suit::Denari, Suit::Spade];
+    let black_suits  = [Suit::Coppe, Suit::Bastoni];
+    if (red_suits.contains(&base.suit) && red_suits.contains(&added.suit))
+        || (black_suits.contains(&base.suit) && black_suits.contains(&added.suit)) {
+        false
+    } else { // Suits are fine, we check numbers
+        use CardNum as N;
+        match (added.number, base.number) {
+            (N::Numeric(a), N::Numeric(b)) if a+1 == b => true,
+            (N::Numeric(10), N::Fante)
+                | (N::Fante, N::Cavallo)
+                | (N::Cavallo, N::Re)
+                => true,
+            _ => false,
+        }
+
+    }
 }
 
 use std::fmt::Display;
@@ -48,7 +117,7 @@ impl Display for Table {
             self.stack.len()));
 
         let print_ace = |i: usize| self.aces[i].cards.iter()
-                                                     .last()
+                                                     .last() // O(n) but prettier code :3
                                                      .map(|c| c.to_string())
                                                      .unwrap_or(UNKNOWN_CARD.to_string());
         s.push_str(&format!("Ace piles (top cards):\t{}\t{}\t{}\t{}\n\n",
