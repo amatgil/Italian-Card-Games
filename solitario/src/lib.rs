@@ -13,7 +13,7 @@ pub struct Table {
 #[derive(Clone, Debug, Default)]
 struct Pile {
     cards: Vec<Card>,
-    revealed: usize,  // the index at which they've been revealed (inclusive)
+    revealed: usize,  // how many cards of this pile have been revealed
 }
 
 
@@ -22,7 +22,7 @@ impl Table {
         let mut deck = Card::shuffled_french_deck();
         let mut piles = std::array::from_fn(|_i| Pile::default());
         for p in 0..7 {
-            piles[p].revealed = p;
+            piles[p].revealed = 1;
             for _ in 0..p+1 {
                 let card = deck.take_from_top().expect("Deck cannot be empty, we don't deal all cards");
                 piles[p].cards.push(card);
@@ -37,8 +37,8 @@ use std::fmt::Display;
 use std::fmt::Formatter;
 impl Display for Table {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
-        let mut s: String = String::from("Table Status:\n");
-        s.push_str(&format!("Stack: {} ({} cards)\n",
+        let mut s: String = String::new();
+        s.push_str(&format!("Stack: Top is {} ---- ({} cards under it)\n\n",
             self.stack.top().map(|c| c.to_string()).unwrap_or("--".to_string()),
             self.stack.len()));
 
@@ -52,7 +52,8 @@ impl Display for Table {
             for Pile { cards, revealed } in &self.piles {
                 if cards.get(depth).is_none() {
                     // Nothing
-                } else if let (true, Some(card)) = (*revealed >= depth, cards.get(depth)) {
+                } else if let (true, Some(card)) = (*revealed >= cards.len()-depth,
+                                                    cards.get(depth)) {
                     s.push_str(&card.to_string());
                 } else {
                     s.push_str(UNKNOWN_CARD);
