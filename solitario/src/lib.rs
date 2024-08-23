@@ -1,4 +1,4 @@
-use core::*;
+    use core::*;
 
 
 pub const UNKNOWN_CARD: &str = "--";
@@ -8,6 +8,7 @@ pub struct Table {
     piles: [Pile; 7],
     stack: Deck,
     passed_stack: Deck,
+    aces: [Pile; 4]
 }
 
 #[derive(Clone, Debug, Default)]
@@ -29,7 +30,11 @@ impl Table {
             }
         }
 
-        Self { piles, stack: deck, passed_stack: Deck::new() }
+        Self { piles,
+               stack: deck,
+               passed_stack: Deck::new(),
+               aces: std::array::from_fn(|_i| Pile::default())
+        }
     }
 }
 
@@ -38,10 +43,22 @@ use std::fmt::Formatter;
 impl Display for Table {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
         let mut s: String = String::new();
-        s.push_str(&format!("Stack: Top is {} ---- ({} cards under it)\n\n",
+        s.push_str(&format!("Stack: Top is {} ---- ({} cards in it)\n\n",
             self.stack.top().map(|c| c.to_string()).unwrap_or("--".to_string()),
             self.stack.len()));
 
+        let print_ace = |i: usize| self.aces[i].cards.iter()
+                                                     .last()
+                                                     .map(|c| c.to_string())
+                                                     .unwrap_or(UNKNOWN_CARD.to_string());
+        s.push_str(&format!("Ace piles (top cards):\t{}\t{}\t{}\t{}\n\n",
+                            print_ace(0),
+                            print_ace(1),
+                            print_ace(2),
+                            print_ace(3),
+                            ));
+
+        s.push_str(&format!("Main area:\n"));
         let max_index: usize = self.piles.iter()
             .map(|p| p.cards.len()) // All lens
             .max().unwrap()         // Max len
@@ -64,6 +81,7 @@ impl Display for Table {
             depth += 1;
             s.push('\n');
         }
+        s.push_str("\n\n");
 
         write!(f, "{s}")
     }
