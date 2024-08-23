@@ -34,6 +34,9 @@ pub enum CardNum {
 pub struct Deck(pub VecDeque<Card>);
 
 impl Deck {
+    pub fn new() -> Self {
+        Self(VecDeque::new())
+    }
     pub fn top(&self) -> Option<&Card> {
         self.0.back()
     }
@@ -92,17 +95,27 @@ impl Card {
         }
     }
 
-    pub fn shuffled_deck() -> Deck {
-        let numbers = [CardNum::Numeric(1), CardNum::Numeric(2), CardNum::Numeric(3),
-                       CardNum::Numeric(4), CardNum::Numeric(5), CardNum::Numeric(6),
-                       CardNum::Numeric(7), CardNum::Fante, CardNum::Cavallo, CardNum::Re];
+    pub fn shuffled_basic_deck() -> Deck {
+        Self::shuffled_deck(
+            &[CardNum::Numeric(1), CardNum::Numeric(2), CardNum::Numeric(3),
+            CardNum::Numeric(4), CardNum::Numeric(5), CardNum::Numeric(6),
+            CardNum::Numeric(7), CardNum::Fante, CardNum::Cavallo, CardNum::Re])
+    }
+    pub fn shuffled_french_deck() -> Deck {
+        Self::shuffled_deck(
+            &[CardNum::Numeric(1), CardNum::Numeric(2), CardNum::Numeric(3),
+            CardNum::Numeric(4), CardNum::Numeric(5), CardNum::Numeric(6),
+            CardNum::Numeric(7), CardNum::Numeric(8), CardNum::Numeric(9), 
+            CardNum::Numeric(10), CardNum::Fante, CardNum::Cavallo, CardNum::Re])
+    }
 
+    fn shuffled_deck(numbers: &[CardNum]) -> Deck {
         let suits = [Suit::Denari, Suit::Coppe, Suit::Bastoni, Suit::Spade];
 
         let mut deck = VecDeque::with_capacity(numbers.len()*suits.len());
         for number in numbers {
             for suit in suits {
-                deck.push_back(Card { number, suit  } )
+                deck.push_back(Card { number: *number, suit  } )
             }
         }
 

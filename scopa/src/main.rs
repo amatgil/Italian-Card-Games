@@ -1,6 +1,7 @@
 use scopa::*;
 use core::*;
 use std::io::stdin;
+use std::io::Write;
 
 fn main() {
     let mut input = String::new();
@@ -33,6 +34,8 @@ Press the Any button to begin...
 
 
         println!("Waiting for input now....");
+        print!(">"); std::io::stdout().flush();
+
         stdin().read_line(&mut input).expect("Could not read from stdin");
         input = input.trim().to_string();
 
@@ -88,7 +91,7 @@ Press the Any button to begin...
             clear_term();
 
             println!("Waiting 1.5 seconds before switching...");
-            thread::sleep(time::Duration::from_millis(1500));
+            //thread::sleep(time::Duration::from_millis(1500));
             game.toggle_turn();
         }
         clear_term();

@@ -2,6 +2,6 @@
 members = [
     "core",
     "scopa",
-    "camicia"
-]
+    "camicia",
+    "solitario"]
 resolver = "2"
