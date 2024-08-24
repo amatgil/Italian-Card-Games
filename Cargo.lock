@@ -137,6 +137,7 @@ name = "solitario"
 version = "0.1.0"
 dependencies = [
  "core",
+ "nom",
 ]
 
 [[package]]

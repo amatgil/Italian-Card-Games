@@ -95,13 +95,22 @@ impl Card {
         }
     }
 
-    /// Assuming basic italian values
+    /// Assuming italian standard value counting
     pub fn value(&self) -> usize {
         match self.number {
             CardNum::Numeric(n) => n,
             CardNum::Fante      => 8,
             CardNum::Cavallo    => 9,
             CardNum::Re         => 10,
+        }
+    }
+
+    pub fn value_fr(&self) -> usize {
+        match self.number {
+            CardNum::Numeric(n) => n,
+            CardNum::Fante      => 11,
+            CardNum::Cavallo    => 12,
+            CardNum::Re         => 13,
         }
     }
 
