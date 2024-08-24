@@ -53,10 +53,29 @@ impl Table {
         }
     }
     pub fn make_move(&self, m: &str) -> Result<(), ()> {
-        match parse_move(m) {
-            // TODOOOO
-            // this goes in there somewhere: self.move_pile(from, to)
+        use ParsedMove as PM;
+        match parse_move(m).map_err(|_| ())?.1 {
+            PM::Undo => todo!("Undoing is not yet implemented"),
+            PM::RevealNextOfStack => {
+                todo!()
+            },
+            PM::MoveFromStackToPile(target) => {
+                todo!()
+            },
+            PM::MoveFromStackToAce(target) => {
+                todo!()
+            },
+            PM::MoveFromPileToPile { from, to, amount } => {
+                todo!()
+            },
+            PM::MoveFromPileToAce { pile, ace } => {
+                todo!()
+            },
+            PM::MoveFromAceToPile { ace, pile } => {
+                todo!()
+            }
         }
+        Ok(())
     }
     pub fn move_pile(&mut self, from_idx: usize, to_idx: usize) -> Result<(), ()> {
         if from_idx >= 7 || to_idx >= 7 { return Err(()) }; // TODO: Make an error enum and whatever
