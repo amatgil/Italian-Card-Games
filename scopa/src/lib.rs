@@ -178,7 +178,7 @@ impl Game {
 
 impl Match {
     pub fn new() -> Match {
-        let mut deck = Card::shuffled_deck();
+        let mut deck = Card::shuffled_basic_deck();
 
         let mut player_first = Player::default();
         let mut player_shuffler = Player::default();

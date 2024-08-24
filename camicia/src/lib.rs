@@ -22,7 +22,7 @@ pub enum Turn {
 
 impl Game {
     pub fn new() -> Game {
-        let mut first = Card::shuffled_deck().0;
+        let mut first = Card::shuffled_basic_deck().0;
         let second = first.split_off(first.len()/2);
         Game {
             pile: Deck(VecDeque::new()),

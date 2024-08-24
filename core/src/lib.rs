@@ -66,13 +66,22 @@ impl Deck {
 }
 
 impl Card {
-    pub fn new(suit: Suit, n: usize) -> Card {
+    pub fn new_it(suit: Suit, n: usize) -> Card {
         match n {
             1..=7 => Card { suit, number: CardNum::Numeric(n) },
             8     => Card { suit, number: CardNum::Fante },
             9     => Card { suit, number: CardNum::Cavallo },
             10    => Card { suit, number: CardNum::Re },
             _     => panic!("Tried to make a card that's greater than 10"),
+        }
+    }
+    pub fn new_fr(suit: Suit, n: usize) -> Card {
+        match n {
+            1..=10 => Card { suit, number: CardNum::Numeric(n) },
+            11     => Card { suit, number: CardNum::Fante },
+            12     => Card { suit, number: CardNum::Cavallo },
+            13     => Card { suit, number: CardNum::Re },
+            _      => panic!("Tried to make a card that's greater than 10"),
         }
     }
 
@@ -86,6 +95,7 @@ impl Card {
         }
     }
 
+    /// Assuming basic italian values
     pub fn value(&self) -> usize {
         match self.number {
             CardNum::Numeric(n) => n,
