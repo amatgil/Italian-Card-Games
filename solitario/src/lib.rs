@@ -33,7 +33,32 @@ impl Pile {
     fn get_tail_of_revealed(&self) -> Option<&Card> {
         self.cards.iter().last() // O(n) but they won't get to 8, it's whatever
     }
+
+    fn add_card_pile(&mut self, card: Card) -> Result<(), ()> {
+        let my_last = self.cards.iter().last();
+        if legality_check(&card, my_last) {
+            self.add_card_unchecked(card);
+            Ok(())
+        } else {
+            return Err(())
+        }
+    }
+
+    fn add_card_ace(&mut self, card: Card) -> Result<(), ()> {
+        match (self.cards.iter().last(), card) {
+            (None, Card { number: CardNum::Numeric(1), ..}) => self.add_card_unchecked(card),
+            (Some(a@Card { suit: s_a, .. }), b@Card { suit: s_b, .. }) if *s_a == s_b && a.value_fr() + 1 == b.value_fr() => self.add_card_unchecked(card),
+            _ => return Err(())
+        }
+        Ok(())
+    }
+
+    fn add_card_unchecked(&mut self, card: Card) {
+        self.cards.push(card);
+        self.revealed += 1;
+    }
 }
+
 impl Table {
     pub fn new() -> Self {
         let mut deck = Card::shuffled_french_deck();
@@ -52,6 +77,7 @@ impl Table {
                aces: std::array::from_fn(|_i| Pile::default())
         }
     }
+
     pub fn make_move(&mut self, m: &str) -> Result<(), ()> {
         use ParsedMove as PM;
         match parse_move(m).map_err(|_| ())?.1 {
@@ -63,12 +89,17 @@ impl Table {
                     let c = self.stack.take_from_top().expect("We're in the else branch, this can't fail"); 
                     self.passed_stack.push_to_bottom(c); // we push to bottom because we'll mem::swap when the stack runs out
                 }
+                Ok(())
             },
-            PM::MoveFromStackToPile(target) => {
-                todo!()
+            PM::MoveFromStackToPile(p) => {
+                if self.stack.is_empty() { return Err(()) }
+                self.piles[p].add_card_pile(self.stack.take_from_top().expect("We're on the branch where this is safe"))
             },
-            PM::MoveFromStackToAce(target) => {
-                todo!()
+            PM::MoveFromStackToAce(a) => {
+                if self.stack.is_empty() { return Err(()) }
+                self.aces[a].add_card_ace(self.stack.take_from_top().expect("We're on the branch where this is safe"));
+
+                Ok(())
             },
             PM::MoveFromPileToPile { from, to, amount } => {
                 todo!()
@@ -80,9 +111,8 @@ impl Table {
                 todo!()
             }
         }
-        Ok(())
     }
-    pub fn move_pile(&mut self, from_idx: usize, to_idx: usize) -> Result<(), ()> {
+    pub fn move_pile(&mut self, from_idx: usize, to_idx: usize, amount: usize) -> Result<(), ()> {
         if from_idx >= 7 || to_idx >= 7 { return Err(()) }; // TODO: Make an error enum and whatever
 
         // We clone because we can't `&mut` them both at once, we'll reassign back if we're on the
@@ -95,9 +125,7 @@ impl Table {
 
 
         
-        if (to_tail.is_none() && from_head.number == CardNum::Re) // We're moving a King to empty
-            || legality_check(from_head, to_tail.ok_or(())?) // Standard check
-        {
+        if legality_check(from_head, to_tail) {
             eprintln!("Legality/King check passed: {:?} and {:?}", from_head, to_tail);
             for _ in 0..from.revealed {
                 dbg!(&from.cards);
@@ -120,7 +148,10 @@ impl Table {
 }
 
 // Denari and spade are red, coppe and bastoni are black. They must alternate
-fn legality_check(added: &Card, base: &Card) -> bool {
+fn legality_check(added: &Card, base: Option<&Card>) -> bool {
+    if base.is_none() { return added.number == CardNum::Re } 
+
+    let base = base.unwrap();
     let red_suits = [Suit::Denari, Suit::Spade];
     let black_suits  = [Suit::Coppe, Suit::Bastoni];
     if (red_suits.contains(&base.suit) && red_suits.contains(&added.suit))
