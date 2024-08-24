@@ -59,14 +59,17 @@ impl Table {
         let mut to   = self.piles[to_idx].clone();
 
         let Some(from_head) = from.get_head_of_revealed() else { return Err(()) };
-        let Some(to_tail)   = to.get_tail_of_revealed()   else { return Err(()) }; 
+        let to_tail   = to.get_tail_of_revealed();
 
 
-        // TODO: Make sure you can move the king to an empty pile (always, no matter the suit)
-        if legality_check(from_head, to_tail) {
-            eprintln!("Legality check passed: {} and {}", from_head, to_tail);
+        
+        if (to_tail.is_none() && from_head.number == CardNum::Re) // We're moving a King to empty
+            || legality_check(from_head, to_tail) // Standard check
+        {
+            eprintln!("Legality/King check passed: {:?} and {:?}", from_head, to_tail);
             for _ in 0..from.revealed {
-                let c = from.cards.remove(from.revealed);
+                dbg!(&from.cards);
+                let c = from.cards.remove(from.revealed-1);
                 to.cards.push(c);
             }
 
@@ -87,7 +90,9 @@ impl Table {
 }
 
 // Denari and spade are red, coppe and bastoni are black. They must alternate
-fn legality_check(added: &Card, base: &Card) -> bool {
+fn legality_check(added: &Card, base: Option<&Card>) -> bool {
+    let Some(base) = base else { return false };
+
     let red_suits = [Suit::Denari, Suit::Spade];
     let black_suits  = [Suit::Coppe, Suit::Bastoni];
     if (red_suits.contains(&base.suit) && red_suits.contains(&added.suit))
@@ -155,4 +160,104 @@ impl Display for Table {
         write!(f, "{s}")
     }
 
+}
+
+
+
+// ============ TESTS ================
+#[test]
+fn same_suit_mismatches() {
+    let mut table = Table::new();
+    let five = Card::new_fr(Suit::Coppe, 5);
+    let six = Card::new_fr(Suit::Coppe, 6);
+
+    // Correct number, wrong suit
+    table.piles[0].cards[0] = five;
+    table.piles[1].cards[1] = six;
+
+    assert!(table.move_pile(0, 1).is_err()); 
+
+    assert_eq!(table.piles[0].cards[0], five); // Didn't get moved
+    assert_eq!(table.piles[1].cards[1], six); // It didn't get changed
+}
+
+#[test]
+fn diff_suit_mismatches() {
+    let mut table = Table::new();
+    let five = Card::new_fr(Suit::Bastoni, 5);
+    let six = Card::new_fr(Suit::Coppe, 6);
+
+    // Correct number, wrong suit
+    table.piles[0].cards[0] = five;
+    table.piles[1].cards[1] = six;
+
+    assert!(table.move_pile(0, 1).is_err()); 
+
+    assert_eq!(table.piles[0].cards[0], five); // Didn't get moved
+    assert_eq!(table.piles[1].cards[1], six); // It didn't get changed
+}
+
+#[test]
+fn wrong_num_mismatches() {
+    // We can try them all
+    for n in 1..=13 { 
+        if n == 5 { continue } // Don't want to test the correct one
+        let mut table = Table::new();
+        let ith = Card::new_fr(Suit::Denari, n);
+        let six = Card::new_fr(Suit::Coppe, 6);
+
+        // Correct suit, wrong number
+        table.piles[0].cards[0] = ith;
+        table.piles[1].cards[1] = six;
+
+        assert!(table.move_pile(0, 1).is_err()); 
+
+        assert_eq!(table.piles[0].cards[0], ith); // Didn't get moved
+        assert_eq!(table.piles[1].cards[1], six); // It didn't get changed
+    }
+}
+
+#[test]
+fn suit_match_legality() {
+    let couples = [
+        (Card::new_fr(Suit::Denari, 5), Card::new_fr(Suit::Coppe, 6)),
+        (Card::new_fr(Suit::Coppe, 5), Card::new_fr(Suit::Denari, 6)),
+
+        (Card::new_fr(Suit::Denari, 5), Card::new_fr(Suit::Bastoni, 6)),
+        (Card::new_fr(Suit::Bastoni, 5), Card::new_fr(Suit::Denari, 6)),
+        
+        (Card::new_fr(Suit::Spade, 5), Card::new_fr(Suit::Coppe, 6)),
+        (Card::new_fr(Suit::Coppe, 5), Card::new_fr(Suit::Spade, 6)),
+
+        (Card::new_fr(Suit::Spade, 5), Card::new_fr(Suit::Bastoni, 6)),
+        (Card::new_fr(Suit::Bastoni, 5), Card::new_fr(Suit::Spade, 6)),
+
+    ];
+
+    for (five, six) in couples {
+        let mut table = Table::new();
+        dbg!(&five, &six);
+        table.piles[0].cards[0] = five;
+        table.piles[1].cards[1] = six;
+
+        assert!(table.move_pile(0, 1).is_ok()); 
+
+        assert!(table.piles[0].cards.is_empty()); // Didn't get moved
+        assert_eq!(table.piles[1].cards[1], six); // It didn't get changed
+        assert_eq!(table.piles[1].cards[2], five); // We gained a five
+    }
+}
+
+#[test]
+fn king_to_empty_pile() {
+    let mut table = Table::new();
+    table.piles = std::array::from_fn(|_i| Pile::default());
+    table.piles[0].cards.push(Card::new_fr(Suit::Coppe, 13));
+    table.piles[0].revealed = 1; // King is revealed
+
+    table.move_pile(0, 1); // Move King to empty pile
+
+    assert!(table.piles[0].cards.is_empty()); // It got moved
+    assert_eq!(table.piles[1].cards.get(0), Some(&Card::new_fr(Suit::Coppe, 13))); // It arrived
+    
 }
