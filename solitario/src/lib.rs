@@ -52,12 +52,17 @@ impl Table {
                aces: std::array::from_fn(|_i| Pile::default())
         }
     }
-    pub fn make_move(&self, m: &str) -> Result<(), ()> {
+    pub fn make_move(&mut self, m: &str) -> Result<(), ()> {
         use ParsedMove as PM;
         match parse_move(m).map_err(|_| ())?.1 {
             PM::Undo => todo!("Undoing is not yet implemented"),
             PM::RevealNextOfStack => {
-                todo!()
+                if self.stack.is_empty() {
+                    std::mem::swap(&mut self.stack, &mut self.passed_stack);
+                } else {
+                    let c = self.stack.take_from_top().expect("We're in the else branch, this can't fail"); 
+                    self.passed_stack.push_to_bottom(c); // we push to bottom because we'll mem::swap when the stack runs out
+                }
             },
             PM::MoveFromStackToPile(target) => {
                 todo!()
@@ -131,9 +136,11 @@ use std::fmt::Formatter;
 impl Display for Table {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
         let mut s: String = String::new();
-        s.push_str(&format!("Stack: Top is {} ---- ({} cards in it)\n\n",
+        s.push_str(&format!("Stack: Top is {} ---- ({} cards in it, {} passed)\n\n",
             self.stack.top().map(|c| c.to_string()).unwrap_or("--".to_string()),
-            self.stack.len()));
+            self.stack.len(),
+            self.passed_stack.len(),
+            ));
 
         let print_ace = |i: usize| self.aces[i].cards.iter()
                                                      .last() // O(n) but prettier code :3
