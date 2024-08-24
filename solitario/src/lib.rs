@@ -1,5 +1,7 @@
-    use core::*;
+use core::*;
 
+mod parse;
+use parse::*;
 
 pub const UNKNOWN_CARD: &str = "--";
 
@@ -50,6 +52,12 @@ impl Table {
                aces: std::array::from_fn(|_i| Pile::default())
         }
     }
+    pub fn make_move(&self, m: &str) -> Result<(), ()> {
+        match parse_move(m) {
+            // TODOOOO
+            // this goes in there somewhere: self.move_pile(from, to)
+        }
+    }
     pub fn move_pile(&mut self, from_idx: usize, to_idx: usize) -> Result<(), ()> {
         if from_idx >= 7 || to_idx >= 7 { return Err(()) }; // TODO: Make an error enum and whatever
 
@@ -64,7 +72,7 @@ impl Table {
 
         
         if (to_tail.is_none() && from_head.number == CardNum::Re) // We're moving a King to empty
-            || legality_check(from_head, to_tail) // Standard check
+            || legality_check(from_head, to_tail.ok_or(())?) // Standard check
         {
             eprintln!("Legality/King check passed: {:?} and {:?}", from_head, to_tail);
             for _ in 0..from.revealed {
@@ -77,8 +85,6 @@ impl Table {
             to.revealed += from.revealed;
             from.revealed = 0;
 
-            //todo!("Move pile over AND UPDATE REVEALED COUNT");
-
             // We were on the happy path, we must reassign back
             self.piles[from_idx] = from;
             self.piles[to_idx] = to;
@@ -90,25 +96,14 @@ impl Table {
 }
 
 // Denari and spade are red, coppe and bastoni are black. They must alternate
-fn legality_check(added: &Card, base: Option<&Card>) -> bool {
-    let Some(base) = base else { return false };
-
+fn legality_check(added: &Card, base: &Card) -> bool {
     let red_suits = [Suit::Denari, Suit::Spade];
     let black_suits  = [Suit::Coppe, Suit::Bastoni];
     if (red_suits.contains(&base.suit) && red_suits.contains(&added.suit))
         || (black_suits.contains(&base.suit) && black_suits.contains(&added.suit)) {
         false
     } else { // Suits are fine, we check numbers
-        use CardNum as N;
-        match (added.number, base.number) {
-            (N::Numeric(a), N::Numeric(b)) if a+1 == b => true,
-            (N::Numeric(10), N::Fante)
-                | (N::Fante, N::Cavallo)
-                | (N::Cavallo, N::Re)
-                => true,
-            _ => false,
-        }
-
+        added.value_fr() + 1 == base.value_fr()
     }
 }
 
@@ -159,7 +154,6 @@ impl Display for Table {
 
         write!(f, "{s}")
     }
-
 }
 
 
