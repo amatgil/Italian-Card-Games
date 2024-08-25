@@ -104,17 +104,19 @@ impl Table {
                 self.aces[a].add_card_ace(self.stack.take_from_top().expect("We're on the branch where this is safe"))
             },
             PM::MoveFromPileToPile { from, to, amount } => {
-                todo!()
+                self.move_pile(from, to, amount)
             },
             PM::MoveFromPileToAce { pile, ace } => {
-                todo!()
+                let Some(card) = self.piles[pile].get_tail_of_revealed() else { return Err(()) };
+                self.aces[ace].add_card_ace(*card)
             },
             PM::MoveFromAceToPile { ace, pile } => {
-                todo!()
+                let Some(card) = self.aces[ace].get_tail_of_revealed() else { return Err(()) };
+                self.piles[pile].add_card_pile(*card)
             }
         }
     }
-    pub fn move_pile(&mut self, from_idx: usize, to_idx: usize, amount: usize) -> Result<(), ()> {
+    pub fn move_pile(&mut self, from_idx: usize, to_idx: usize, mut amount: usize) -> Result<(), ()> {
         if from_idx >= 7 || to_idx >= 7 { return Err(()) }; // TODO: Make an error enum and whatever
 
         // We clone because we can't `&mut` them both at once, we'll reassign back if we're on the
@@ -122,38 +124,31 @@ impl Table {
         let mut from = self.piles[from_idx].clone();
         let mut to   = self.piles[to_idx].clone();
 
-        let Some(from_head) = from.get_head_of_revealed() else { return Err(()) };
+        let Some(from_head) = from.get_nth_revealed(amount) else { return Err(()) };
         let to_tail   = to.get_tail_of_revealed();
 
 
-        // Check that it's legal
-        for _ in 0..amount {
-            let Some(c) = self.piles[from_idx].get_tail_of_revealed() else { return Err(()) };
-        }
-
-        // Execute it
-
-        todo!("Make the move")
         
-        //if legality_check(from_head, to_tail) {
-        //    eprintln!("Legality/King check passed: {:?} and {:?}", from_head, to_tail);
-        //    for _ in 0..from.revealed {
-        //        dbg!(&from.cards);
-        //        let c = from.cards.remove(from.revealed-1);
-        //        to.cards.push(c);
-        //    }
+        if legality_check(from_head, to_tail) {
+            eprintln!("Legality/King check passed: {:?} and {:?}", from_head, to_tail);
+            amount = amount.min(from.revealed);
+            for _ in 0..amount {
+                dbg!(&from.cards);
+                let c = from.cards.remove(amount);
+                to.cards.push(c);
+            }
 
 
-        //    to.revealed += from.revealed;
-        //    from.revealed = 0;
+            to.revealed += amount;
+            from.revealed -= amount;
 
-        //    // We were on the happy path, we must reassign back
-        //    self.piles[from_idx] = from;
-        //    self.piles[to_idx] = to;
-        //    Ok(())
-        //} else {
-        //    Err(()) // Illegal move
-        //}
+            // We were on the happy path, we must reassign back
+            self.piles[from_idx] = from;
+            self.piles[to_idx] = to;
+            Ok(())
+        } else {
+            Err(()) // Illegal move
+        }
     }
 }
 
