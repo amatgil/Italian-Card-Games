@@ -31,7 +31,11 @@ impl Pile {
     }
     /// Get the card that's closest to the bottom of the table (as in, has the lowest value)
     fn get_tail_of_revealed(&self) -> Option<&Card> {
-        self.cards.iter().last() // O(n) but they won't get to 8, it's whatever
+        self.cards.iter().last() // O(n) but they won't even get to 8, it's whatever
+    }
+    /// Get nth revealed (0 is lowest value, 1 is closer towards the K, etc.)
+    fn get_nth_revealed(&self, n: usize) -> Option<&Card> {
+        self.cards.iter().rev().nth(n) // O(n) also
     }
 
     fn add_card_pile(&mut self, card: Card) -> Result<(), ()> {
@@ -97,9 +101,7 @@ impl Table {
             },
             PM::MoveFromStackToAce(a) => {
                 if self.stack.is_empty() { return Err(()) }
-                self.aces[a].add_card_ace(self.stack.take_from_top().expect("We're on the branch where this is safe"));
-
-                Ok(())
+                self.aces[a].add_card_ace(self.stack.take_from_top().expect("We're on the branch where this is safe"))
             },
             PM::MoveFromPileToPile { from, to, amount } => {
                 todo!()
@@ -124,26 +126,34 @@ impl Table {
         let to_tail   = to.get_tail_of_revealed();
 
 
-        
-        if legality_check(from_head, to_tail) {
-            eprintln!("Legality/King check passed: {:?} and {:?}", from_head, to_tail);
-            for _ in 0..from.revealed {
-                dbg!(&from.cards);
-                let c = from.cards.remove(from.revealed-1);
-                to.cards.push(c);
-            }
-
-
-            to.revealed += from.revealed;
-            from.revealed = 0;
-
-            // We were on the happy path, we must reassign back
-            self.piles[from_idx] = from;
-            self.piles[to_idx] = to;
-            Ok(())
-        } else {
-            Err(()) // Illegal move
+        // Check that it's legal
+        for _ in 0..amount {
+            let Some(c) = self.piles[from_idx].get_tail_of_revealed() else { return Err(()) };
         }
+
+        // Execute it
+
+        todo!("Make the move")
+        
+        //if legality_check(from_head, to_tail) {
+        //    eprintln!("Legality/King check passed: {:?} and {:?}", from_head, to_tail);
+        //    for _ in 0..from.revealed {
+        //        dbg!(&from.cards);
+        //        let c = from.cards.remove(from.revealed-1);
+        //        to.cards.push(c);
+        //    }
+
+
+        //    to.revealed += from.revealed;
+        //    from.revealed = 0;
+
+        //    // We were on the happy path, we must reassign back
+        //    self.piles[from_idx] = from;
+        //    self.piles[to_idx] = to;
+        //    Ok(())
+        //} else {
+        //    Err(()) // Illegal move
+        //}
     }
 }
 
@@ -226,7 +236,7 @@ fn same_suit_mismatches() {
     table.piles[0].cards[0] = five;
     table.piles[1].cards[1] = six;
 
-    assert!(table.move_pile(0, 1).is_err()); 
+    assert!(table.move_pile(0, 1, 1).is_err()); 
 
     assert_eq!(table.piles[0].cards[0], five); // Didn't get moved
     assert_eq!(table.piles[1].cards[1], six); // It didn't get changed
@@ -242,7 +252,7 @@ fn diff_suit_mismatches() {
     table.piles[0].cards[0] = five;
     table.piles[1].cards[1] = six;
 
-    assert!(table.move_pile(0, 1).is_err()); 
+    assert!(table.move_pile(0, 1, 1).is_err()); 
 
     assert_eq!(table.piles[0].cards[0], five); // Didn't get moved
     assert_eq!(table.piles[1].cards[1], six); // It didn't get changed
@@ -261,7 +271,7 @@ fn wrong_num_mismatches() {
         table.piles[0].cards[0] = ith;
         table.piles[1].cards[1] = six;
 
-        assert!(table.move_pile(0, 1).is_err()); 
+        assert!(table.move_pile(0, 1, 1).is_err()); 
 
         assert_eq!(table.piles[0].cards[0], ith); // Didn't get moved
         assert_eq!(table.piles[1].cards[1], six); // It didn't get changed
@@ -291,7 +301,7 @@ fn suit_match_legality() {
         table.piles[0].cards[0] = five;
         table.piles[1].cards[1] = six;
 
-        assert!(table.move_pile(0, 1).is_ok()); 
+        assert!(table.move_pile(0, 1, 1).is_ok()); 
 
         assert!(table.piles[0].cards.is_empty()); // Didn't get moved
         assert_eq!(table.piles[1].cards[1], six); // It didn't get changed
@@ -306,7 +316,7 @@ fn king_to_empty_pile() {
     table.piles[0].cards.push(Card::new_fr(Suit::Coppe, 13));
     table.piles[0].revealed = 1; // King is revealed
 
-    table.move_pile(0, 1); // Move King to empty pile
+    table.move_pile(0, 1, 1); // Move King to empty pile
 
     assert!(table.piles[0].cards.is_empty()); // It got moved
     assert_eq!(table.piles[1].cards.get(0), Some(&Card::new_fr(Suit::Coppe, 13))); // It arrived

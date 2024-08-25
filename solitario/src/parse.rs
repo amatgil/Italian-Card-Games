@@ -92,6 +92,11 @@ pub fn parse_move(input: &str) -> CResult<&str, ParsedMove> {
     }
 }
 
+pub fn parse_move_prefix(input: &str) -> CResult<&str, ()> {
+    let (input, _) = alt((tag("m;"), tag("m")))(input)?; // I keep instinctively typing `m;` so we're going to accept it too
+    Ok((input, ()))
+}
+
 pub fn parse_stack_revealing(input: &str) -> CResult<&str, ParsedMove> {
     let (input, _) = alt((tag("next"), tag("n")))(input)?; // Order is important
     Ok((input, ParsedMove::RevealNextOfStack))
@@ -128,7 +133,7 @@ pub fn parse_move_stack_to_ace(input: &str) -> CResult<&str, ParsedMove> {
 }
 
 pub fn parse_move_pile_to_pile(input: &str) -> CResult<&str, ParsedMove> {
-    let (input, _) = tag("m")(input)?;   
+    let (input, _) = parse_move_prefix(input)?;
     let (input, x) = p_u32(input)?;
     let (input, _) = tag(";")(input)?;   
     let (input, y) = p_u32(input)?;   
@@ -137,6 +142,8 @@ pub fn parse_move_pile_to_pile(input: &str) -> CResult<&str, ParsedMove> {
 
     if x >= 7 || y >= 7 {
         Err(CustomError::new(CustomErrorKind::OutOfRangePiles(n as usize)))
+    } else if x == y {
+        Err(CustomError::new(CustomErrorKind::RepeatedSelection))
     } else {
         Ok((input, ParsedMove::MoveFromPileToPile {
             from: x as usize,
@@ -148,7 +155,7 @@ pub fn parse_move_pile_to_pile(input: &str) -> CResult<&str, ParsedMove> {
 }
 
 pub fn parse_move_pile_to_aces(input: &str) -> CResult<&str, ParsedMove> {
-    let (input, _) = tag("m")(input)?;   
+    let (input, _) = parse_move_prefix(input)?;
     let (input, pile) = p_u32(input)?;
     let (input, _) = tag(";")(input)?;   
     let (input, _) = tag("a")(input)?;   
@@ -168,7 +175,7 @@ pub fn parse_move_pile_to_aces(input: &str) -> CResult<&str, ParsedMove> {
 }
 
 pub fn parse_move_aces_to_pile(input: &str) -> CResult<&str, ParsedMove> {
-    let (input, _) = tag("m")(input)?;   
+    let (input, _) = parse_move_prefix(input)?;
     let (input, _) = tag("a")(input)?;   
     let (input, ace) = p_u32(input)?;
     let (input, _) = tag(";")(input)?;   
@@ -196,6 +203,7 @@ fn parsing_battery() {
         ("next",    PM::RevealNextOfStack),
         ("u",       PM::Undo),
         ("undo",    PM::Undo),
+
         ("s;0",     PM::MoveFromStackToPile(0)),
         ("s;1",     PM::MoveFromStackToPile(1)),
         ("s;2",     PM::MoveFromStackToPile(2)),
@@ -205,13 +213,21 @@ fn parsing_battery() {
         ("s;a1",    PM::MoveFromStackToAce(1)),
         ("s;a2",    PM::MoveFromStackToAce(2)),
         ("s;a3",    PM::MoveFromStackToAce(3)),
+
         ("m0;1;3",  PM::MoveFromPileToPile { from: 0, to: 1, amount: 3}),
         ("m1;2;3",  PM::MoveFromPileToPile { from: 1, to: 2, amount: 3}),
         ("ma1;2",   PM::MoveFromAceToPile { ace: 1, pile: 2}),
         ("m1;a2",   PM::MoveFromPileToAce { pile: 1, ace: 2}),
+
+        ("m;0;1;3",  PM::MoveFromPileToPile { from: 0, to: 1, amount: 3}),
+        ("m;1;2;3",  PM::MoveFromPileToPile { from: 1, to: 2, amount: 3}),
+        ("m;a1;2",   PM::MoveFromAceToPile { ace: 1, pile: 2}),
+        ("m;1;a2",   PM::MoveFromPileToAce { pile: 1, ace: 2}),
     ];
 
     let errs = [
+        "m3;3;2",  
+        "m;;3;4;2",  
         "nexttt",
         "sekjfhjkfhkjsflkjsdhfklsdjkf",
         "un",
@@ -220,19 +236,24 @@ fn parsing_battery() {
         "nextt",
         "nxtt",
         "dlkjhflkjshglks",
-        "m;1;1;2",  // Repeated piles
-        "m;8;1;2",  // Out of range
-        "m;-1;1;2", // Out of range
+        "m0;0;2",  // Repeated piles
+        "m1;1;2",  
+        "m2;2;2",  
+        "m4;4;2",  
+        "m5;5;2",  
+        "m6;6;2",  
+        "m8;1;2",   // Out of range
+        "m-1;1;2",  // Out of range
         "s;7",      // Number too big
         "s;a4",     // Number too big
-        "s;a-1",     // Number too big
         "ma7;2",
         "ma2;7",
         "m7;a2",
         "m2;a7",
         "m7;2;3",
         "m2;7;3",
-        "m2;4;-3",
+        "s;a-1",   // Negatives  
+        "m2;4;-3", // Negatives
     ];
 
     for (inp, out) in ok_pairs {
@@ -243,7 +264,7 @@ fn parsing_battery() {
 
     for inp in errs {
         dbg!(parse_move(inp), inp);
-        assert!(parse_move(inp).is_err())
+        assert!(parse_move(inp).is_err());
     }
 }
 
