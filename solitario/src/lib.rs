@@ -4,6 +4,9 @@ mod parse;
 use parse::*;
 pub use parse::SYNTAX_CHEATSHEET;
 
+const RED_SUITS: [Suit; 2]   = [Suit::Denari, Suit::Spade];
+const BLACK_SUITS: [Suit; 2] = [Suit::Coppe, Suit::Bastoni];
+
 pub const UNKNOWN_CARD: &str = "--";
 
 #[derive(Clone, Debug)]
@@ -15,9 +18,13 @@ pub struct Table {
 }
 
 #[derive(Clone, Debug, Default)]
-struct Pile {
+struct GamePile {
     cards: Vec<Card>,
     revealed: usize,  // how many cards of this pile have been revealed
+}
+#[derive(Clone, Debug, Default)]
+struct AcePile {
+    cards: Vec<Card>,
 }
 
 
@@ -44,9 +51,10 @@ impl Pile {
 
     fn pop_tail_of_revealed(&mut self) -> Option<Card> {
         if self.revealed == 0 || self.cards.is_empty() { return None; }
-        self.revealed = (self.revealed - 1).max(1);
+        if self.revealed > 1 { self.revealed -= 1}
         self.cards.pop()
     }
+
     fn add_card_pile(&mut self, card: Card) -> Result<(), IllegalGamePileAdd> {
         let my_last = self.cards.iter().last();
         if legality_check(&card, my_last) {
@@ -199,18 +207,17 @@ impl Table {
 }
 
 // Denari and spade are red, coppe and bastoni are black. They must alternate
-fn legality_check(added: &Card, base: Option<&Card>) -> bool {
-    if base.is_none() { return added.number == CardNum::Re } 
+fn legality_check(added: &Card, base_opt: Option<&Card>) -> bool {
+    dbg!(added, base_opt);
+    if let Some(base) = base_opt {
+        (added.value_fr() + 1 == base.value_fr()) 
+            && !((RED_SUITS.contains(&base.suit) && RED_SUITS.contains(&added.suit))
+                || (BLACK_SUITS.contains(&base.suit) && BLACK_SUITS.contains(&added.suit)))
 
-    let base = base.unwrap();
-    let red_suits = [Suit::Denari, Suit::Spade];
-    let black_suits  = [Suit::Coppe, Suit::Bastoni];
-    if (red_suits.contains(&base.suit) && red_suits.contains(&added.suit))
-        || (black_suits.contains(&base.suit) && black_suits.contains(&added.suit)) {
-        false
-    } else { // Suits are fine, we check numbers
-        added.value_fr() + 1 == base.value_fr()
-    }
+    } else {
+        added.number == CardNum::Re 
+    } 
+
 }
 
 use std::fmt::Display;
