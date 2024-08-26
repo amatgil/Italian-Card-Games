@@ -14,7 +14,8 @@ pub struct Table {
     piles: [GamePile; 7],
     stack: Deck,
     passed_stack: Deck,
-    aces: [AcePile; 4]
+    aces: [AcePile; 4],
+    moves: usize,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -153,7 +154,8 @@ impl Table {
         Self { piles,
                stack: deck,
                passed_stack: Deck::new(),
-               aces: std::array::from_fn(|_i| AcePile::default())
+               aces: std::array::from_fn(|_i| AcePile::default()),
+               moves: 0
         }
     }
 
@@ -206,8 +208,15 @@ impl Table {
                 let card = self.aces[ace].top().ok_or(MoveMakingError::AcePileIsEmpty)?;
                 self.piles[pile].add_card(*card)?;
                 let _ = self.aces[ace].pop();
+            },
+            PM::Cycle => {
+                while !self.stack.is_empty() { self.make_move("next")?; }
+                self.make_move("next")?; // And then show the next one
+
+                if self.moves != 0 { self.moves -= 1; } // Uncount the `cycle` command, it's unintuitive and wrong
             }
         }
+        self.moves += 1;
         Ok(())
     }
     pub fn move_pile(&mut self, from_idx: usize, to_idx: usize, amount: usize) -> Result<(), GamePileMovingError> {
@@ -293,11 +302,11 @@ fn print_card_fr(c: &Card) -> String {
 
     format!("{}{}{}", s, num, col)  
 }
-// TODO: make the sdtack card revevaled the one of the passed deck, not the top of the unrevvealed
-// ones
+
 impl Display for Table {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
         let mut s: String = String::new();
+        s.push_str(&format!("Number of moves made is: \x1B[1m'{}'\x1B[0m\n\n", self.moves));
         s.push_str(&format!("\x1B[1mStack:\x1B[0m Top is {} ---- ({} cards upside down, {} passed)\n\n",
             self.stack.top().map(print_card_fr).unwrap_or("--".to_string()),
             self.stack.len(),
