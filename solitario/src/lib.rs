@@ -163,6 +163,10 @@ impl Table {
             PM::Undo => {
                 println!("\x1B[1;41mUndoing is not yet implemented\x1B[0m");
             },
+            PM::Quit => {
+                println!("quit signal received, quitting...");
+                std::process::exit(0);
+            },
             PM::RevealNextOfStack => {
                 if self.stack.is_empty() {
                     std::mem::swap(&mut self.stack, &mut self.passed_stack);
@@ -282,10 +286,12 @@ fn print_card_fr(c: &Card) -> String {
 
     format!("{}{}{}", s, num, col)  
 }
+// TODO: make the sdtack card revevaled the one of the passed deck, not the top of the unrevvealed
+// ones
 impl Display for Table {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
         let mut s: String = String::new();
-        s.push_str(&format!("\x1B[1mStack:\x1B[0m Top is {} ---- ({} cards in it, {} passed)\n\n",
+        s.push_str(&format!("\x1B[1mStack:\x1B[0m Top is {} ---- ({} cards upside down, {} passed)\n\n",
             self.stack.top().map(print_card_fr).unwrap_or("--".to_string()),
             self.stack.len(),
             self.passed_stack.len(),

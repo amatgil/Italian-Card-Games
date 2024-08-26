@@ -58,6 +58,9 @@ impl Deck {
     pub fn len(&self) -> usize {
         self.0.len()
     }
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
     pub fn move_all_cards_to(&mut self, dest: &mut Deck) {
         for card in self.0.drain(..) {
             dest.push_to_bottom(card)

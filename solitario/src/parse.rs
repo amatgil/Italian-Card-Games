@@ -62,6 +62,7 @@ impl<I> CustomError<I> {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ParsedMove {
     Undo,
+    Quit,
     RevealNextOfStack,
     MoveFromStackToPile(usize),
     MoveFromStackToAce(usize),
@@ -89,6 +90,7 @@ pub const SYNTAX_CHEATSHEET: &str = r#"| Action                                 
 | Move N cards from pile X to Y               | `mX;Y;N`      |
 | Move lowest card from pile X to ace stack Y | `mX;aY`       |
 | Move top card from ace stack Y to pile X    | `maY;X`       |
+| Quit                                        | `q` or `quit` |
 "#;
 
 
@@ -102,6 +104,7 @@ pub const SYNTAX_CHEATSHEET: &str = r#"| Action                                 
 ///  | Move N cards from pile X to Y               | `mX;Y;N`      |
 ///  | Move lowest card from pile X to ace stack Y | `mX;aY`       |
 ///  | Move top card from ace stack Y to pile X    | `maY;X`       |
+///  | Quit                                        | `q` or `quit` |
 pub fn parse_move(input: &str) -> Result<ParsedMove, ParsingError> {
     let original_input = input; // Copy ref
 
@@ -111,7 +114,8 @@ pub fn parse_move(input: &str) -> Result<ParsedMove, ParsingError> {
          parse_move_pile_to_pile,
          parse_move_pile_to_aces,
          parse_move_aces_to_pile,
-         parse_undo
+         parse_undo,
+         parse_quit,
      ))(input.trim()).map_err(|e| ParsingError {
         input: original_input.to_string(),
         reason: e.to_string()
@@ -141,6 +145,11 @@ pub fn parse_stack_revealing(input: &str) -> CResult<&str, ParsedMove> {
 pub fn parse_undo(input: &str) -> CResult<&str, ParsedMove> {
     let (input, _) = alt((tag("undo"), tag("u")))(input)?; // Order is still important
     Ok((input, ParsedMove::Undo))
+}
+
+pub fn parse_quit(input: &str) -> CResult<&str, ParsedMove> {
+    let (input, _) = alt((tag("quit"), tag("q")))(input)?; // Order is still still important
+    Ok((input, ParsedMove::Quit))
 }
 
 pub fn parse_move_stack_to_pile(input: &str) -> CResult<&str, ParsedMove> {
