@@ -34,7 +34,7 @@ Press the Any button to begin...
 
 
         println!("Waiting for input now....");
-        print!(">"); std::io::stdout().flush();
+        print!(">"); std::io::stdout().flush().expect("could not flush stdout");
 
         stdin().read_line(&mut input).expect("Could not read from stdin");
         input = input.trim().to_string();

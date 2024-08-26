@@ -4,7 +4,7 @@ use std::cmp::Ordering;
 
 mod parse_move;
 use crate::parse_move::*;
-use core::*;
+use cards_core::*;
 
 #[derive(Clone, Debug, Default)]
 pub struct Player {

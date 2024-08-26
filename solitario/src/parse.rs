@@ -1,3 +1,4 @@
+use std::fmt;
 use nom::{
     IResult,
     bytes::complete::tag,
@@ -9,19 +10,24 @@ use nom::{
 };
 use nom::character::complete::u32 as p_u32;
 
-#[derive(Debug, PartialEq)]
+#[derive(thiserror::Error, Debug, PartialEq)]
 pub struct CustomError<I> {
     errors: Vec<CustomErrorKind<I>>
 }
 
 pub type CResult<I, T> = IResult<I, T, CustomError<I>>;
 
-#[derive(Debug, PartialEq)]
+#[derive(thiserror::Error, Debug, PartialEq)]
 pub enum CustomErrorKind<I> {
+  #[error("standard nom error: {1:?}")]
   Nom(I, VerboseErrorKind),
+  #[error("input had text left over after a successful parse")]
   InputHadLeftovers(I), // `undoo` doesn't count as `undo`
+  #[error("repeated value found")]
   RepeatedSelection,    // can't move e.g. from pile 3 to 3
+  #[error("at least one of the selected game piles was out of range: {0}")]
   OutOfRangePiles(usize), // There's only seven of them
+  #[error("at least one of the selected ace piles was out of range: {0}")]
   OutOfRangeAces(usize),  // There's only four of them
 }
 

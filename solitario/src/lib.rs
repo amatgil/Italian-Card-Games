@@ -1,4 +1,4 @@
-use core::*;
+use cards_core::*;
 
 mod parse;
 use parse::*;

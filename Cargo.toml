@@ -1,6 +1,6 @@
 [workspace]
 members = [
-    "core",
+    "cards_core",
     "scopa",
     "camicia",
     "solitario"]

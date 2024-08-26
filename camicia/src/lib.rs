@@ -1,6 +1,6 @@
 use std::fmt::{Display, Debug, Formatter};
 use std::collections::VecDeque;
-use core::*;
+use cards_core::*;
 
 #[derive(Clone, Debug)]
 pub struct Game {
