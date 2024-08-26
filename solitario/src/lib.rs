@@ -180,12 +180,19 @@ impl Table {
                 let c = self.stack.top().expect("We're on the branch where this is safe");
                 self.piles[p].add_card(*c)?;
                 let _ = self.stack.take_from_top().expect("Same reason");
+                if !self.passed_stack.is_empty() {
+                    self.stack.push_to_top(self.passed_stack.take_from_bottom().unwrap());
+                }
             },
             PM::MoveFromStackToAce(a) => {
                 if self.stack.is_empty() { return Err(MoveMakingError::StackIsEmpty) }
                 let c = self.stack.top().expect("We're on the branch where this is safe");
                 self.aces[a].add_card(*c)?;
                 let _ = self.stack.take_from_top().expect("Same reason");
+
+                if !self.passed_stack.is_empty() {
+                    self.stack.push_to_top(self.passed_stack.take_from_bottom().unwrap());
+                }
             },
             PM::MoveFromPileToPile { from, to, amount } => {
                 self.move_pile(from, to, amount)?;
