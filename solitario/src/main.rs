@@ -16,7 +16,6 @@ fn main() {
 
         println!("{}\n", std::iter::repeat('=').take(HOW_MANY_EQUALS).collect::<String>());
         println!("Current table is:\n{table}\n\n");
-        dbg!(&table);
         println!("{}\n", std::iter::repeat('=').take(HOW_MANY_EQUALS).collect::<String>());
 
         println!("Please input your move:");

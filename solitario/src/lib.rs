@@ -7,7 +7,7 @@ pub use parse::SYNTAX_CHEATSHEET;
 const RED_SUITS: [Suit; 2]   = [Suit::Denari, Suit::Spade];
 const BLACK_SUITS: [Suit; 2] = [Suit::Coppe, Suit::Bastoni];
 
-pub const UNKNOWN_CARD: &str = "--";
+pub const UNKNOWN_CARD: &str = "---";
 
 #[derive(Clone, Debug)]
 pub struct Table {
@@ -250,18 +250,28 @@ fn legality_check(added: &Card, base_opt: Option<&Card>) -> bool {
 use std::fmt::Display;
 use std::fmt::Formatter;
 
+fn print_card_fr(c: &Card) -> String {
+    let (s, col) = match c.suit {
+        Suit::Spade   => ("♥", "🟥"),
+        Suit::Denari  => ("♦", "🟥"),
+
+        Suit::Coppe   => ("♣", "⬛"),
+        Suit::Bastoni => ("♠", "⬛"),
+    };
+    format!("{}{}{}", s, c.number, col)  
+}
 impl Display for Table {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
         let mut s: String = String::new();
         s.push_str(&format!("Stack: Top is {} ---- ({} cards in it, {} passed)\n\n",
-            self.stack.top().map(|c| c.to_string()).unwrap_or("--".to_string()),
+            self.stack.top().map(|c| print_card_fr(c)).unwrap_or("--".to_string()),
             self.stack.len(),
             self.passed_stack.len(),
             ));
 
         let print_ace = |i: usize| self.aces[i].cards.iter()
                                                      .last() // O(n) but prettier code :3
-                                                     .map(|c| c.to_string())
+                                                     .map(|c| print_card_fr(c))
                                                      .unwrap_or(UNKNOWN_CARD.to_string());
         s.push_str(&format!("Ace piles (top cards):\t{}\t{}\t{}\t{}\n\n",
                             print_ace(0),
@@ -278,6 +288,8 @@ impl Display for Table {
 
         s.push_str(&(0..7).map(|i| format!("[{i}]")).collect::<Vec<String>>().join("\t"));
         s.push_str("\n");
+        s.push_str(&(0..7).map(|i| format!("===")).collect::<Vec<String>>().join("\t"));
+        s.push_str("\n");
 
         let mut depth = 0;
         while depth <= max_index {
@@ -286,7 +298,7 @@ impl Display for Table {
                     // Nothing
                 } else if let (true, Some(card)) = (*revealed >= cards.len()-depth,
                                                     cards.get(depth)) {
-                    s.push_str(&card.to_string());
+                    s.push_str(&print_card_fr(card));
                 } else {
                     s.push_str(UNKNOWN_CARD);
                 }
