@@ -211,9 +211,8 @@ impl Table {
             },
             PM::Cycle => {
                 while !self.stack.is_empty() { self.make_move("next")?; }
-                self.make_move("next")?; // And then show the next one
 
-                if self.moves != 0 { self.moves -= 1; } // Uncount the `cycle` command, it's unintuitive and wrong
+                if self.moves > 0 { self.moves -= 1; } // Uncount the `cycle` command, it's unintuitive and wrong
             }
         }
         self.moves += 1;
