@@ -15,6 +15,8 @@ fn main() {
     let mut table = Table::new();
     let mut move_text_buffer = String::new();
 
+    let mut moves = 0;
+
     let equals_string = "=".repeat(HOW_MANY_EQUALS);
 
     print_syntax_cheatsheet(&equals_string);
@@ -28,6 +30,7 @@ fn main() {
         println!("{}\n", equals_string);
         println!("Current table is:\n{table}\n\n");
         println!("{}\n", equals_string);
+        println!("Number of moves made is: \x1B[1m'{}'\x1B[0m\n", moves);
 
         println!("Please input your move:");
         print!(">");
@@ -38,6 +41,8 @@ fn main() {
 
         if let Err(e) = table.make_move(move_text_buffer.trim()) {
             println!("Error: \x1B[1;41m{e}\x1B[0m");
+        } else {
+            moves += 1;
         }
 
         if table.has_won() {
