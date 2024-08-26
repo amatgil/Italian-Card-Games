@@ -72,6 +72,7 @@ pub enum ParsedMove {
 ///  | Reveal next card in stack                   | `next`        |
 ///  | Undo                                        | `u` or `undo` |
 ///  | Move top card in stack to pile X            | `s;X`         |
+///  | Move top card in stack to ace X             | `s;aX`        |
 ///  | Move N cards from pile X to Y               | `mX;Y;N`      |
 ///  | Move lowest card from pile X to ace stack Y | `mX;aY`       |
 ///  | Move top card from ace stack Y to pile X    | `maY;X`       |
@@ -141,7 +142,8 @@ pub fn parse_move_pile_to_pile(input: &str) -> CResult<&str, ParsedMove> {
     let (input, n) = p_u32(input)?;   
 
     if x >= 7 || y >= 7 {
-        Err(CustomError::new(CustomErrorKind::OutOfRangePiles(n as usize)))
+        let z = x.max(y);
+        Err(CustomError::new(CustomErrorKind::OutOfRangePiles(z as usize)))
     } else if x == y {
         Err(CustomError::new(CustomErrorKind::RepeatedSelection))
     } else {
@@ -226,34 +228,15 @@ fn parsing_battery() {
     ];
 
     let errs = [
-        "m3;3;2",  
-        "m;;3;4;2",  
-        "nexttt",
+        "m3;3;2",  "m;;3;4;2",  "nexttt",
         "sekjfhjkfhkjsflkjsdhfklsdjkf",
-        "un",
-        "und",
-        "undoo",
-        "nextt",
-        "nxtt",
+        "un", "und", "undoo", "nextt", "nxtt",
         "dlkjhflkjshglks",
-        "m0;0;2",  // Repeated piles
-        "m1;1;2",  
-        "m2;2;2",  
-        "m4;4;2",  
-        "m5;5;2",  
-        "m6;6;2",  
-        "m8;1;2",   // Out of range
-        "m-1;1;2",  // Out of range
-        "s;7",      // Number too big
-        "s;a4",     // Number too big
-        "ma7;2",
-        "ma2;7",
-        "m7;a2",
-        "m2;a7",
-        "m7;2;3",
-        "m2;7;3",
-        "s;a-1",   // Negatives  
-        "m2;4;-3", // Negatives
+        "m0;0;2", "m1;1;2",  "m2;2;2",  "m4;4;2",  "m5;5;2",  "m6;6;2",  // Repeated piles
+        "m8;1;2", "m-1;1;2",  // Out of range
+        "s;7",    "s;a4",     // Number too big
+        "ma7;2",  "ma2;7",   "m7;a2", "m2;a7", "m7;2;3", "m2;7;3",
+        "s;a-1",  "m2;4;-3", // Negatives
     ];
 
     for (inp, out) in ok_pairs {
@@ -267,14 +250,3 @@ fn parsing_battery() {
         assert!(parse_move(inp).is_err());
     }
 }
-
-
-// Syntax:
-//  | Action                                      | Syntax        |
-//  |---------------------------------------------+---------------|
-//  | Reveal next card in stack                   | `next`        |
-//  | Undo                                        | `u` or `undo` |
-//  | Move top card in stack to pile X            | `s;X`         |
-//  | Move N cards from pile X to Y               | `mX;Y;N`      |
-//  | Move lowest card from pile X to ace stack Y | `mX;aY`       |
-//  | Move top card from ace stack Y to pile X    | `maY;X`       |
