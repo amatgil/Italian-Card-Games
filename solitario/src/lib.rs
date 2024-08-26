@@ -43,8 +43,8 @@ impl Pile {
     }
 
     fn pop_tail_of_revealed(&mut self) -> Option<Card> {
-        if self.revealed == 0 { return None; }
-        self.revealed -= 1;
+        if self.revealed == 0 || self.cards.is_empty() { return None; }
+        self.revealed = (self.revealed - 1).max(1);
         self.cards.pop()
     }
     fn add_card_pile(&mut self, card: Card) -> Result<(), IllegalGamePileAdd> {
