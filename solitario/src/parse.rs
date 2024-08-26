@@ -82,6 +82,18 @@ pub enum ParsedMove {
     },
 }
 
+pub const SYNTAX_CHEATSHEET: &str = r#"| Action                                      | Syntax        |
+|---------------------------------------------+---------------|
+| Reveal next card in stack                   | `next`        |
+| Undo                                        | `u` or `undo` |
+| Move top card in stack to pile X            | `s;X`         |
+| Move top card in stack to ace X             | `s;aX`        |
+| Move N cards from pile X to Y               | `mX;Y;N`      |
+| Move lowest card from pile X to ace stack Y | `mX;aY`       |
+| Move top card from ace stack Y to pile X    | `maY;X`       |
+"#;
+
+
 /// Syntax:
 ///  | Action                                      | Syntax        |
 ///  |---------------------------------------------+---------------|

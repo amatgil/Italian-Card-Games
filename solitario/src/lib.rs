@@ -2,7 +2,7 @@ use cards_core::*;
 
 mod parse;
 use parse::*;
-
+pub use parse::SYNTAX_CHEATSHEET;
 
 pub const UNKNOWN_CARD: &str = "--";
 
@@ -31,15 +31,22 @@ impl Pile {
             Some(&self.cards[self.cards.len() - self.revealed])
         }
     }
+
     /// Get the card that's closest to the bottom of the table (as in, has the lowest value)
     fn get_tail_of_revealed(&self) -> Option<&Card> {
         self.cards.iter().last() // O(n) but they won't even get to 8, it's whatever
     }
+    
     /// Get nth revealed (0 is lowest value, 1 is closer towards the K, etc.)
     fn get_nth_revealed(&self, n: usize) -> Option<&Card> {
         self.cards.iter().rev().nth(n) // O(n) also
     }
 
+    fn pop_tail_of_revealed(&mut self) -> Option<Card> {
+        if self.revealed == 0 { return None; }
+        self.revealed -= 1;
+        self.cards.pop()
+    }
     fn add_card_pile(&mut self, card: Card) -> Result<(), IllegalGamePileAdd> {
         let my_last = self.cards.iter().last();
         if legality_check(&card, my_last) {
@@ -145,10 +152,12 @@ impl Table {
             PM::MoveFromPileToAce { pile, ace } => {
                 let card = self.piles[pile].get_tail_of_revealed().ok_or(MoveMakingError::PileHasNoRevaled)?;
                 self.aces[ace].add_card_ace(*card)?;
+                let _ = self.piles[pile].pop_tail_of_revealed();
             },
             PM::MoveFromAceToPile { ace, pile } => {
                 let card = self.aces[ace].get_tail_of_revealed().ok_or(MoveMakingError::PileHasNoRevaled)?;
                 self.piles[pile].add_card_pile(*card)?;
+                let _ = self.aces[ace].pop_tail_of_revealed();
             }
         }
         Ok(())
@@ -206,6 +215,7 @@ fn legality_check(added: &Card, base: Option<&Card>) -> bool {
 
 use std::fmt::Display;
 use std::fmt::Formatter;
+
 impl Display for Table {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
         let mut s: String = String::new();
@@ -231,6 +241,9 @@ impl Display for Table {
             .map(|p| p.cards.len()) // All lens
             .max().unwrap()         // Max len
             .max(1) - 1;            // Clamp to 1, turn into index
+
+        s.push_str(&(0..7).map(|i| format!("[{i}]")).collect::<Vec<String>>().join("\t"));
+        s.push_str("\n");
 
         let mut depth = 0;
         while depth <= max_index {
