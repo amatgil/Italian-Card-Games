@@ -160,7 +160,9 @@ impl Table {
     pub fn make_move(&mut self, m: &str) -> Result<(), MoveMakingError> {
         use ParsedMove as PM;
         match parse_move(m)? {
-            PM::Undo => todo!("Undoing is not yet implemented"),
+            PM::Undo => {
+                println!("Undoing is not yet implemented");
+            },
             PM::RevealNextOfStack => {
                 if self.stack.is_empty() {
                     std::mem::swap(&mut self.stack, &mut self.passed_stack);
@@ -275,24 +277,27 @@ fn print_card_fr(c: &Card) -> String {
 impl Display for Table {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
         let mut s: String = String::new();
-        s.push_str(&format!("Stack: Top is {} ---- ({} cards in it, {} passed)\n\n",
+        s.push_str(&format!("\x1B[1mStack:\x1B[0m Top is {} ---- ({} cards in it, {} passed)\n\n",
             self.stack.top().map(|c| print_card_fr(c)).unwrap_or("--".to_string()),
             self.stack.len(),
             self.passed_stack.len(),
             ));
 
-        let print_ace = |i: usize| self.aces[i].cards.iter()
-                                                     .last() // O(n) but prettier code :3
-                                                     .map(|c| print_card_fr(c))
-                                                     .unwrap_or(UNKNOWN_CARD.to_string());
-        s.push_str(&format!("Ace piles (top cards):\t{}\t{}\t{}\t{}\n\n",
+        let print_ace = |i: usize| self.aces[i]
+                                       .cards
+                                       .iter()
+                                       .last() // O(n) but prettier code :3
+                                       .map(|c| print_card_fr(c))
+                                       .unwrap_or(UNKNOWN_CARD.to_string());
+
+        s.push_str(&format!("\x1B[1mAce piles:\x1B[0m\t{}\t{}\t{}\t{}\n\n",
                             print_ace(0),
                             print_ace(1),
                             print_ace(2),
                             print_ace(3),
                             ));
 
-        s.push_str(&format!("Main area:\n"));
+        s.push_str(&format!("\x1B[1mMain area:\x1B[0m\n"));
         let max_index: usize = self.piles.iter()
             .map(|p| p.cards.len()) // All lens
             .max().unwrap()         // Max len
