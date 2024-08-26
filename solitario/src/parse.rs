@@ -1,8 +1,6 @@
-use std::fmt;
 use nom::{
     IResult,
     bytes::complete::tag,
-    multi::separated_list0,
     branch::alt,
     error::ParseError,
     error::ErrorKind,

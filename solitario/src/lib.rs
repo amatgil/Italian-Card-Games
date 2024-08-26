@@ -11,10 +11,10 @@ pub const UNKNOWN_CARD: &str = "--";
 
 #[derive(Clone, Debug)]
 pub struct Table {
-    piles: [Pile; 7],
+    piles: [GamePile; 7],
     stack: Deck,
     passed_stack: Deck,
-    aces: [Pile; 4]
+    aces: [AcePile; 4]
 }
 
 #[derive(Clone, Debug, Default)]
@@ -29,10 +29,10 @@ struct AcePile {
 
 
 
-impl Pile {
+impl GamePile {
     /// Get the card that's closest to the top of the table (as in, has the highest value)
     /// Assumes that `self.revealed > 0`
-    fn get_head_of_revealed(&self) -> Option<&Card> {
+    fn _get_head_of_revealed(&self) -> Option<&Card> {
         if self.cards.is_empty() { None }
         else {
             Some(&self.cards[self.cards.len() - self.revealed])
@@ -40,13 +40,20 @@ impl Pile {
     }
 
     /// Get the card that's closest to the bottom of the table (as in, has the lowest value)
+    /// Assumes the last card is always revealed (unless the len is 0, in which case it's None)
     fn get_tail_of_revealed(&self) -> Option<&Card> {
         self.cards.iter().last() // O(n) but they won't even get to 8, it's whatever
     }
     
     /// Get nth revealed (0 is lowest value, 1 is closer towards the K, etc.)
+    /// `n` is the index, like in `.get` or indexing methods
     fn get_nth_revealed(&self, n: usize) -> Option<&Card> {
+        dbg!(self.revealed, &self.cards, n);
+        if self.revealed < n || self.cards.len() <= n { return None; }
+
+        dbg!(
         self.cards.iter().rev().nth(n) // O(n) also
+        )
     }
 
     fn pop_tail_of_revealed(&mut self) -> Option<Card> {
@@ -55,7 +62,7 @@ impl Pile {
         self.cards.pop()
     }
 
-    fn add_card_pile(&mut self, card: Card) -> Result<(), IllegalGamePileAdd> {
+    fn add_card(&mut self, card: Card) -> Result<(), IllegalGamePileAdd> {
         let my_last = self.cards.iter().last();
         if legality_check(&card, my_last) {
             self.add_card_unchecked(card);
@@ -65,7 +72,14 @@ impl Pile {
         }
     }
 
-    fn add_card_ace(&mut self, card: Card) -> Result<(), IllegalAcePileAdd> {
+    fn add_card_unchecked(&mut self, card: Card) {
+        self.cards.push(card);
+        self.revealed += 1;
+    }
+}
+
+impl AcePile {
+    fn add_card(&mut self, card: Card) -> Result<(), IllegalAcePileAdd> {
         match (self.cards.iter().last(), card) {
             (None, Card { number: CardNum::Numeric(1), ..}) => self.add_card_unchecked(card),
             (Some(a@Card { suit: s_a, .. }), b@Card { suit: s_b, .. }) if *s_a == s_b && a.value_fr() + 1 == b.value_fr() => self.add_card_unchecked(card),
@@ -73,20 +87,24 @@ impl Pile {
         }
         Ok(())
     }
-
     fn add_card_unchecked(&mut self, card: Card) {
         self.cards.push(card);
-        self.revealed += 1;
+    }
+    fn top(&self) -> Option<&Card> {
+        self.cards.iter().last()
+    }
+    fn pop(&mut self) -> Option<Card> {
+        self.cards.pop()
     }
 }
 
 #[derive(thiserror::Error, Debug, Clone)]
 #[error("attempted to add a card on an ace pile illegally")]
-struct IllegalAcePileAdd;
+pub struct IllegalAcePileAdd;
 
 #[derive(thiserror::Error, Debug, Clone)]
 #[error("attempted to add a card on a game pile illegally")]
-struct IllegalGamePileAdd;
+pub struct IllegalGamePileAdd;
 
 #[derive(thiserror::Error, Debug, Clone)]
 pub enum MoveMakingError {
@@ -96,29 +114,34 @@ pub enum MoveMakingError {
     IllegalAcePileAdd(#[from] IllegalAcePileAdd),
     #[error("{0}")]
     IllegalGamePileAdd(#[from] IllegalGamePileAdd),
-    #[error("pile has no revealed cards to use")]
-    PileHasNoRevaled,
+    #[error("game pile has no revealed cards to use")]
+    GamePileHasNoRevealed,
+    #[error("ace pile has no cards")]
+    AcePileIsEmpty,
     #[error("stack has no uncovered cards, you may cycle it with `next`")]
     StackIsEmpty,
     #[error("while moving the game piles: {0}")]
-    MovingGamePile(#[from] GamePileMovingError)
-
+    MovingGamePile(#[from] GamePileMovingError),
 }
 
 #[derive(thiserror::Error, Debug, Clone)]
 pub enum GamePileMovingError {
     #[error("pile has no revealed cards to use")]
-    PileHasNoRevaled,
+    PileHasNoRevealed,
     #[error("move was illegal")]
     IllegalMove,
     #[error("pile out of range")]
-    PileOutOfRange
+    PileOutOfRange,
+    #[error("specified amount was zero")]
+    AmountWasZero,
+    #[error("attempting to move more cards than are revealed")]
+    NotEnoughRevealedCards(usize),
 }
 
 impl Table {
     pub fn new() -> Self {
         let mut deck = Card::shuffled_french_deck();
-        let mut piles = std::array::from_fn(|_i| Pile::default());
+        let mut piles = std::array::from_fn(|_i| GamePile::default());
         for p in 0..7 {
             piles[p].revealed = 1;
             for _ in 0..p+1 {
@@ -130,7 +153,7 @@ impl Table {
         Self { piles,
                stack: deck,
                passed_stack: Deck::new(),
-               aces: std::array::from_fn(|_i| Pile::default())
+               aces: std::array::from_fn(|_i| AcePile::default())
         }
     }
 
@@ -148,24 +171,24 @@ impl Table {
             },
             PM::MoveFromStackToPile(p) => {
                 if self.stack.is_empty() { return Err(MoveMakingError::StackIsEmpty) }
-                self.piles[p].add_card_pile(self.stack.take_from_top().expect("We're on the branch where this is safe"))?;
+                self.piles[p].add_card(self.stack.take_from_top().expect("We're on the branch where this is safe"))?;
             },
             PM::MoveFromStackToAce(a) => {
                 if self.stack.is_empty() { return Err(MoveMakingError::StackIsEmpty) }
-                self.aces[a].add_card_ace(self.stack.take_from_top().expect("We're on the branch where this is safe"))?;
+                self.aces[a].add_card(self.stack.take_from_top().expect("We're on the branch where this is safe"))?;
             },
             PM::MoveFromPileToPile { from, to, amount } => {
                 self.move_pile(from, to, amount)?;
             },
             PM::MoveFromPileToAce { pile, ace } => {
-                let card = self.piles[pile].get_tail_of_revealed().ok_or(MoveMakingError::PileHasNoRevaled)?;
-                self.aces[ace].add_card_ace(*card)?;
+                let card = self.piles[pile].get_tail_of_revealed().ok_or(MoveMakingError::GamePileHasNoRevealed)?;
+                self.aces[ace].add_card(*card)?;
                 let _ = self.piles[pile].pop_tail_of_revealed();
             },
             PM::MoveFromAceToPile { ace, pile } => {
-                let card = self.aces[ace].get_tail_of_revealed().ok_or(MoveMakingError::PileHasNoRevaled)?;
-                self.piles[pile].add_card_pile(*card)?;
-                let _ = self.aces[ace].pop_tail_of_revealed();
+                let card = self.aces[ace].top().ok_or(MoveMakingError::AcePileIsEmpty)?;
+                self.piles[pile].add_card(*card)?;
+                let _ = self.aces[ace].pop();
             }
         }
         Ok(())
@@ -178,23 +201,27 @@ impl Table {
         let mut from = self.piles[from_idx].clone();
         let mut to   = self.piles[to_idx].clone();
 
-        let from_head = from.get_nth_revealed(amount).ok_or(GamePileMovingError::PileHasNoRevaled)?;
+        if amount == 0 { return Err(GamePileMovingError::AmountWasZero) }
+        let from_base = from.get_nth_revealed(amount - 1).ok_or(GamePileMovingError::PileHasNoRevealed)?;
         let to_tail   = to.get_tail_of_revealed();
 
 
         
-        if legality_check(from_head, to_tail) {
-            eprintln!("Legality/King check passed: {:?} and {:?}", from_head, to_tail);
-            amount = amount.min(from.revealed);
+        if legality_check(from_base, to_tail) {
+            eprintln!("Legality/King check passed: {:?} and {:?}", from_base, to_tail);
+            if amount > from.revealed { return Err(GamePileMovingError::NotEnoughRevealedCards(amount)) };
+
             for _ in 0..amount {
                 dbg!(&from.cards);
-                let c = from.cards.remove(amount);
+                let c = from.cards.remove(from.cards.len() - amount);
                 to.cards.push(c);
             }
 
 
             to.revealed += amount;
             from.revealed -= amount;
+
+            if from.revealed == 0 { from.revealed = 1 }
 
             // We were on the happy path, we must reassign back
             self.piles[from_idx] = from;
@@ -212,7 +239,7 @@ fn legality_check(added: &Card, base_opt: Option<&Card>) -> bool {
     if let Some(base) = base_opt {
         (added.value_fr() + 1 == base.value_fr()) 
             && !((RED_SUITS.contains(&base.suit) && RED_SUITS.contains(&added.suit))
-                || (BLACK_SUITS.contains(&base.suit) && BLACK_SUITS.contains(&added.suit)))
+                 || (BLACK_SUITS.contains(&base.suit) && BLACK_SUITS.contains(&added.suit)))
 
     } else {
         added.number == CardNum::Re 
@@ -254,7 +281,7 @@ impl Display for Table {
 
         let mut depth = 0;
         while depth <= max_index {
-            for Pile { cards, revealed } in &self.piles {
+            for GamePile { cards, revealed } in &self.piles {
                 if cards.get(depth).is_none() {
                     // Nothing
                 } else if let (true, Some(card)) = (*revealed >= cards.len()-depth,
