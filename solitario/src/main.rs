@@ -18,7 +18,7 @@ fn main() {
         io::stdin().read_line(&mut move_text_buffer).expect("Could not read from stdin");
 
         if let Err(e) = table.make_move(move_text_buffer.trim()) {
-            println!("Error, go again; {e}");
+            println!("Error: \x1B[1;41m{e}\x1B[0m");
         }
 
         move_text_buffer = String::new();

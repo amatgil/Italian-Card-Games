@@ -3,6 +3,7 @@ use cards_core::*;
 mod parse;
 use parse::*;
 
+
 pub const UNKNOWN_CARD: &str = "--";
 
 #[derive(Clone, Debug)]
@@ -18,6 +19,7 @@ struct Pile {
     cards: Vec<Card>,
     revealed: usize,  // how many cards of this pile have been revealed
 }
+
 
 
 impl Pile {
@@ -38,21 +40,21 @@ impl Pile {
         self.cards.iter().rev().nth(n) // O(n) also
     }
 
-    fn add_card_pile(&mut self, card: Card) -> Result<(), ()> {
+    fn add_card_pile(&mut self, card: Card) -> Result<(), IllegalGamePileAdd> {
         let my_last = self.cards.iter().last();
         if legality_check(&card, my_last) {
             self.add_card_unchecked(card);
             Ok(())
         } else {
-            return Err(())
+            Err(IllegalGamePileAdd)
         }
     }
 
-    fn add_card_ace(&mut self, card: Card) -> Result<(), ()> {
+    fn add_card_ace(&mut self, card: Card) -> Result<(), IllegalAcePileAdd> {
         match (self.cards.iter().last(), card) {
             (None, Card { number: CardNum::Numeric(1), ..}) => self.add_card_unchecked(card),
             (Some(a@Card { suit: s_a, .. }), b@Card { suit: s_b, .. }) if *s_a == s_b && a.value_fr() + 1 == b.value_fr() => self.add_card_unchecked(card),
-            _ => return Err(())
+            _ => return Err(IllegalAcePileAdd),
         }
         Ok(())
     }
@@ -61,6 +63,41 @@ impl Pile {
         self.cards.push(card);
         self.revealed += 1;
     }
+}
+
+#[derive(thiserror::Error, Debug, Clone)]
+#[error("attempted to add a card on an ace pile illegally")]
+struct IllegalAcePileAdd;
+
+#[derive(thiserror::Error, Debug, Clone)]
+#[error("attempted to add a card on a game pile illegally")]
+struct IllegalGamePileAdd;
+
+#[derive(thiserror::Error, Debug, Clone)]
+pub enum MoveMakingError {
+    #[error("could not parse move: {0}")]
+    Parsing(#[from] ParsingError), // TODO: make this (and the backend in src/parse.rs) be done properly (i gave up and am using a String for now, but the foundation is laid)
+    #[error("{0}")]
+    IllegalAcePileAdd(#[from] IllegalAcePileAdd),
+    #[error("{0}")]
+    IllegalGamePileAdd(#[from] IllegalGamePileAdd),
+    #[error("pile has no revealed cards to use")]
+    PileHasNoRevaled,
+    #[error("stack has no uncovered cards, you may cycle it with `next`")]
+    StackIsEmpty,
+    #[error("while moving the game piles: {0}")]
+    MovingGamePile(#[from] GamePileMovingError)
+
+}
+
+#[derive(thiserror::Error, Debug, Clone)]
+pub enum GamePileMovingError {
+    #[error("pile has no revealed cards to use")]
+    PileHasNoRevaled,
+    #[error("move was illegal")]
+    IllegalMove,
+    #[error("pile out of range")]
+    PileOutOfRange
 }
 
 impl Table {
@@ -82,9 +119,9 @@ impl Table {
         }
     }
 
-    pub fn make_move(&mut self, m: &str) -> Result<(), ()> {
+    pub fn make_move(&mut self, m: &str) -> Result<(), MoveMakingError> {
         use ParsedMove as PM;
-        match parse_move(m).map_err(|_| ())?.1 {
+        match parse_move(m)? {
             PM::Undo => todo!("Undoing is not yet implemented"),
             PM::RevealNextOfStack => {
                 if self.stack.is_empty() {
@@ -93,38 +130,38 @@ impl Table {
                     let c = self.stack.take_from_top().expect("We're in the else branch, this can't fail"); 
                     self.passed_stack.push_to_bottom(c); // we push to bottom because we'll mem::swap when the stack runs out
                 }
-                Ok(())
             },
             PM::MoveFromStackToPile(p) => {
-                if self.stack.is_empty() { return Err(()) }
-                self.piles[p].add_card_pile(self.stack.take_from_top().expect("We're on the branch where this is safe"))
+                if self.stack.is_empty() { return Err(MoveMakingError::StackIsEmpty) }
+                self.piles[p].add_card_pile(self.stack.take_from_top().expect("We're on the branch where this is safe"))?;
             },
             PM::MoveFromStackToAce(a) => {
-                if self.stack.is_empty() { return Err(()) }
-                self.aces[a].add_card_ace(self.stack.take_from_top().expect("We're on the branch where this is safe"))
+                if self.stack.is_empty() { return Err(MoveMakingError::StackIsEmpty) }
+                self.aces[a].add_card_ace(self.stack.take_from_top().expect("We're on the branch where this is safe"))?;
             },
             PM::MoveFromPileToPile { from, to, amount } => {
-                self.move_pile(from, to, amount)
+                self.move_pile(from, to, amount)?;
             },
             PM::MoveFromPileToAce { pile, ace } => {
-                let Some(card) = self.piles[pile].get_tail_of_revealed() else { return Err(()) };
-                self.aces[ace].add_card_ace(*card)
+                let card = self.piles[pile].get_tail_of_revealed().ok_or(MoveMakingError::PileHasNoRevaled)?;
+                self.aces[ace].add_card_ace(*card)?;
             },
             PM::MoveFromAceToPile { ace, pile } => {
-                let Some(card) = self.aces[ace].get_tail_of_revealed() else { return Err(()) };
-                self.piles[pile].add_card_pile(*card)
+                let card = self.aces[ace].get_tail_of_revealed().ok_or(MoveMakingError::PileHasNoRevaled)?;
+                self.piles[pile].add_card_pile(*card)?;
             }
         }
+        Ok(())
     }
-    pub fn move_pile(&mut self, from_idx: usize, to_idx: usize, mut amount: usize) -> Result<(), ()> {
-        if from_idx >= 7 || to_idx >= 7 { return Err(()) }; // TODO: Make an error enum and whatever
+    pub fn move_pile(&mut self, from_idx: usize, to_idx: usize, mut amount: usize) -> Result<(), GamePileMovingError> {
+        if from_idx >= 7 || to_idx >= 7 { return Err(GamePileMovingError::PileOutOfRange) }; 
 
         // We clone because we can't `&mut` them both at once, we'll reassign back if we're on the
         // happy path
         let mut from = self.piles[from_idx].clone();
         let mut to   = self.piles[to_idx].clone();
 
-        let Some(from_head) = from.get_nth_revealed(amount) else { return Err(()) };
+        let from_head = from.get_nth_revealed(amount).ok_or(GamePileMovingError::PileHasNoRevaled)?;
         let to_tail   = to.get_tail_of_revealed();
 
 
@@ -147,7 +184,7 @@ impl Table {
             self.piles[to_idx] = to;
             Ok(())
         } else {
-            Err(()) // Illegal move
+            Err(GamePileMovingError::IllegalMove) 
         }
     }
 }

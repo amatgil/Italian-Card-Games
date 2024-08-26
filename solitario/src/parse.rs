@@ -10,14 +10,24 @@ use nom::{
 };
 use nom::character::complete::u32 as p_u32;
 
-#[derive(thiserror::Error, Debug, PartialEq)]
+#[derive(thiserror::Error, Debug, PartialEq, Clone)]
 pub struct CustomError<I> {
     errors: Vec<CustomErrorKind<I>>
 }
 
+
+// TODO: This is temporary, parse_move should return the proper CustomError type. However, I am
+// giving up for now on it
+#[derive(thiserror::Error, Debug, Clone)]
+#[error("error while parsing '{input}': '{reason}'")]
+pub struct ParsingError {
+    input: String,
+    reason: String // this sucks
+}
+
 pub type CResult<I, T> = IResult<I, T, CustomError<I>>;
 
-#[derive(thiserror::Error, Debug, PartialEq)]
+#[derive(thiserror::Error, Debug, PartialEq, Clone)]
 pub enum CustomErrorKind<I> {
   #[error("standard nom error: {1:?}")]
   Nom(I, VerboseErrorKind),
@@ -82,7 +92,9 @@ pub enum ParsedMove {
 ///  | Move N cards from pile X to Y               | `mX;Y;N`      |
 ///  | Move lowest card from pile X to ace stack Y | `mX;aY`       |
 ///  | Move top card from ace stack Y to pile X    | `maY;X`       |
-pub fn parse_move(input: &str) -> CResult<&str, ParsedMove> {
+pub fn parse_move(input: &str) -> Result<ParsedMove, ParsingError> {
+    let original_input = input; // Copy ref
+
     let (input, res) = alt((parse_stack_revealing,
          parse_move_stack_to_pile,
          parse_move_stack_to_ace,
@@ -90,12 +102,19 @@ pub fn parse_move(input: &str) -> CResult<&str, ParsedMove> {
          parse_move_pile_to_aces,
          parse_move_aces_to_pile,
          parse_undo
-     ))(input.trim())?;
+     ))(input.trim()).map_err(|e| ParsingError {
+        input: original_input.to_string(),
+        reason: e.to_string()
+    })?;
 
     if !input.is_empty() {
-        Err(CustomError::new(CustomErrorKind::InputHadLeftovers(input)))
+        //Err(CustomError::new(CustomErrorKind::InputHadLeftovers(input)))
+        Err(ParsingError {
+            input: original_input.to_string(),
+            reason: "input had leftovers".to_string()
+        })
     } else {
-        Ok((input, res))
+        Ok(res)
     }
 }
 
