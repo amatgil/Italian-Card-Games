@@ -171,11 +171,15 @@ impl Table {
             },
             PM::MoveFromStackToPile(p) => {
                 if self.stack.is_empty() { return Err(MoveMakingError::StackIsEmpty) }
-                self.piles[p].add_card(self.stack.take_from_top().expect("We're on the branch where this is safe"))?;
+                let c = self.stack.top().expect("We're on the branch where this is safe");
+                self.piles[p].add_card(*c)?;
+                let _ = self.stack.take_from_top().expect("Same reason");
             },
             PM::MoveFromStackToAce(a) => {
                 if self.stack.is_empty() { return Err(MoveMakingError::StackIsEmpty) }
-                self.aces[a].add_card(self.stack.take_from_top().expect("We're on the branch where this is safe"))?;
+                let c = self.stack.top().expect("We're on the branch where this is safe");
+                self.aces[a].add_card(*c)?;
+                let _ = self.stack.take_from_top().expect("Same reason");
             },
             PM::MoveFromPileToPile { from, to, amount } => {
                 self.move_pile(from, to, amount)?;
@@ -211,9 +215,10 @@ impl Table {
             eprintln!("Legality/King check passed: {:?} and {:?}", from_base, to_tail);
             if amount > from.revealed { return Err(GamePileMovingError::NotEnoughRevealedCards(amount)) };
 
+            let removal_index = from.cards.len() - amount; // len varies so we store it here
             for _ in 0..amount {
                 dbg!(&from.cards);
-                let c = from.cards.remove(from.cards.len() - amount);
+                let c = from.cards.remove(removal_index);
                 to.cards.push(c);
             }
 
@@ -258,7 +263,14 @@ fn print_card_fr(c: &Card) -> String {
         Suit::Coppe   => ("♣", "⬛"),
         Suit::Bastoni => ("♠", "⬛"),
     };
-    format!("{}{}{}", s, c.number, col)  
+    let num = match c.number {
+        CardNum::Numeric(1) => "A".to_string(),
+        CardNum::Numeric(n) =>  n.to_string(),
+        CardNum::Fante      => "J".to_string(),
+        CardNum::Cavallo    => "Q".to_string(),
+        CardNum::Re         => "K".to_string(),
+    };
+    format!("{}{}{}", s, num, col)  
 }
 impl Display for Table {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
