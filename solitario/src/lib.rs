@@ -142,11 +142,11 @@ impl Table {
     pub fn new() -> Self {
         let mut deck = Card::shuffled_french_deck();
         let mut piles = std::array::from_fn(|_i| GamePile::default());
-        for p in 0..7 {
-            piles[p].revealed = 1;
+        for (p, pile) in piles.iter_mut().enumerate() {
+            pile.revealed = 1;
             for _ in 0..p+1 {
                 let card = deck.take_from_top().expect("Deck cannot be empty, we don't deal all cards");
-                piles[p].cards.push(card);
+                pile.cards.push(card);
             }
         }
 
@@ -199,7 +199,7 @@ impl Table {
         }
         Ok(())
     }
-    pub fn move_pile(&mut self, from_idx: usize, to_idx: usize, mut amount: usize) -> Result<(), GamePileMovingError> {
+    pub fn move_pile(&mut self, from_idx: usize, to_idx: usize, amount: usize) -> Result<(), GamePileMovingError> {
         if from_idx >= 7 || to_idx >= 7 { return Err(GamePileMovingError::PileOutOfRange) }; 
 
         // We clone because we can't `&mut` them both at once, we'll reassign back if we're on the
@@ -238,9 +238,15 @@ impl Table {
             Err(GamePileMovingError::IllegalMove) 
         }
     }
+    pub fn has_won(&self) -> bool {
+        self.piles.iter().map(|p| p.cards.len() == p.revealed).all(|b| b)
+    }
 }
 
-// Denari and spade are red, coppe and bastoni are black. They must alternate
+
+/// Denari and spade are red, coppe and bastoni are black. They must alternate.
+/// If the base is None, added must be (any) K. If not, their values must be sequential with
+/// alternating suits.
 fn legality_check(added: &Card, base_opt: Option<&Card>) -> bool {
     dbg!(added, base_opt);
     if let Some(base) = base_opt {
@@ -261,24 +267,26 @@ fn print_card_fr(c: &Card) -> String {
     let (s, col) = match c.suit {
         Suit::Spade   => ("♥", "🟥"),
         Suit::Denari  => ("♦", "🟥"),
-
         Suit::Coppe   => ("♣", "⬛"),
         Suit::Bastoni => ("♠", "⬛"),
     };
+
     let num = match c.number {
-        CardNum::Numeric(1) => "A".to_string(),
-        CardNum::Numeric(n) =>  n.to_string(),
-        CardNum::Fante      => "J".to_string(),
-        CardNum::Cavallo    => "Q".to_string(),
-        CardNum::Re         => "K".to_string(),
+        CardNum::Numeric(1)  => "A".to_string(),
+        CardNum::Numeric(10) => "X".to_string(), // '10' is two characters, messes up the alignment
+        CardNum::Numeric(n)  =>  n.to_string(),
+        CardNum::Fante       => "J".to_string(),
+        CardNum::Cavallo     => "Q".to_string(),
+        CardNum::Re          => "K".to_string(),
     };
+
     format!("{}{}{}", s, num, col)  
 }
 impl Display for Table {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
         let mut s: String = String::new();
         s.push_str(&format!("\x1B[1mStack:\x1B[0m Top is {} ---- ({} cards in it, {} passed)\n\n",
-            self.stack.top().map(|c| print_card_fr(c)).unwrap_or("--".to_string()),
+            self.stack.top().map(print_card_fr).unwrap_or("--".to_string()),
             self.stack.len(),
             self.passed_stack.len(),
             ));
@@ -287,26 +295,26 @@ impl Display for Table {
                                        .cards
                                        .iter()
                                        .last() // O(n) but prettier code :3
-                                       .map(|c| print_card_fr(c))
+                                       .map(print_card_fr)
                                        .unwrap_or(UNKNOWN_CARD.to_string());
 
         s.push_str(&format!("\x1B[1mAce piles:\x1B[0m\t{}\t{}\t{}\t{}\n\n",
                             print_ace(0),
                             print_ace(1),
                             print_ace(2),
-                            print_ace(3),
-                            ));
+                            print_ace(3)));
 
-        s.push_str(&format!("\x1B[1mMain area:\x1B[0m\n"));
+        s.push_str("\x1B[1mMain area:\x1B[0m\n");
+
         let max_index: usize = self.piles.iter()
             .map(|p| p.cards.len()) // All lens
             .max().unwrap()         // Max len
             .max(1) - 1;            // Clamp to 1, turn into index
 
         s.push_str(&(0..7).map(|i| format!("[{i}]")).collect::<Vec<String>>().join("\t"));
-        s.push_str("\n");
-        s.push_str(&(0..7).map(|i| format!("===")).collect::<Vec<String>>().join("\t"));
-        s.push_str("\n");
+        s.push('\n');
+        s.push_str(&(0..7).map(|_| "===".to_string()).collect::<Vec<String>>().join("\t"));
+        s.push('\n');
 
         let mut depth = 0;
         while depth <= max_index {
@@ -331,6 +339,9 @@ impl Display for Table {
     }
 }
 
+impl Default for Table {
+    fn default() -> Self { Self::new() }
+}
 
 
 // ============ TESTS ================

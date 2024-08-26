@@ -9,14 +9,15 @@ fn main() {
     let mut table = Table::new();
     let mut move_text_buffer = String::new();
 
+    let equals_string = "=".repeat(HOW_MANY_EQUALS);
     loop {
-        println!("\n\n{}\n", std::iter::repeat('=').take(HOW_MANY_EQUALS).collect::<String>());
+        println!("\n\n{}\n", equals_string);
         println!("{SYNTAX_CHEATSHEET}");
-        println!("\n\n{}\n", std::iter::repeat('=').take(HOW_MANY_EQUALS).collect::<String>());
+        println!("\n\n{}\n", equals_string);
 
-        println!("{}\n", std::iter::repeat('=').take(HOW_MANY_EQUALS).collect::<String>());
+        println!("{}\n", equals_string);
         println!("Current table is:\n{table}\n\n");
-        println!("{}\n", std::iter::repeat('=').take(HOW_MANY_EQUALS).collect::<String>());
+        println!("{}\n", equals_string);
 
         println!("Please input your move:");
         print!(">");
@@ -26,6 +27,25 @@ fn main() {
 
         if let Err(e) = table.make_move(move_text_buffer.trim()) {
             println!("Error: \x1B[1;41m{e}\x1B[0m");
+        }
+
+        if table.has_won() {
+
+            println!(
+r#"__   __          _                                 _ 
+\ \ / /__  _   _( )_   _____  __      _____  _ __ | |
+ \ V / _ \| | | |/\ \ / / _ \ \ \ /\ / / _ \| '_ \| |
+  | | (_) | |_| |  \ V /  __/  \ V  V / (_) | | | |_|
+  |_|\___/ \__,_|   \_/ \___|   \_/\_/ \___/|_| |_(_)
+                                                     
+__        __                            
+\ \      / /__   ___   ___   ___   ___  
+ \ \ /\ / / _ \ / _ \ / _ \ / _ \ / _ \ 
+  \ V  V / (_) | (_) | (_) | (_) | (_) |
+   \_/\_/ \___/ \___/ \___/ \___/ \___/ 
+                                        
+"#);
+            break;
         }
 
         move_text_buffer = String::new();
