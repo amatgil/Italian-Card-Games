@@ -161,7 +161,7 @@ impl Table {
         use ParsedMove as PM;
         match parse_move(m)? {
             PM::Undo => {
-                println!("Undoing is not yet implemented");
+                println!("\x1B[1;41mUndoing is not yet implemented\x1B[0m");
             },
             PM::RevealNextOfStack => {
                 if self.stack.is_empty() {
