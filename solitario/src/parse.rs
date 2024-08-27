@@ -37,7 +37,7 @@ pub enum CustomErrorKind<I> {
   OutOfRangePiles(usize), // There's only seven of them
   #[error("at least one of the selected ace piles was out of range: {0}")]
   OutOfRangeAces(usize),  // There's only four of them
-  #[error("amount was too large (must be under u8::MAX: '{}'")]
+  #[error("amount was too large (must be under u8::MAX: '{0}'")]
   AmountTooLarge(usize), // Amount must be under u8::MAX
 }
 
@@ -67,8 +67,8 @@ pub enum ParsedMove {
     Quit,
     Cycle,
     RevealNextOfStack,
-    MoveFromStackToPile(usize),
-    MoveFromStackToAce(usize),
+    MoveFromStackToPile(u8),
+    MoveFromStackToAce(u8),
     MoveFromPileToPile {
         from: u8,
         to: u8,
@@ -86,7 +86,7 @@ pub enum ParsedMove {
 
 pub const SYNTAX_CHEATSHEET: &str = r#"| Action                                      | Syntax        |
 |---------------------------------------------+---------------|
-| Reveal next card in stack                   | `next`        |
+| Reveal next card in stack                   | `n` or `next` |
 | Undo                                        | `u` or `undo` |
 | Move top card in stack to pile X            | `s;X`         |
 | Move top card in stack to ace X             | `s;aX`        |
@@ -170,7 +170,7 @@ pub fn parse_move_stack_to_pile(input: &str) -> CResult<&str, ParsedMove> {
     if n >= 7 {
         Err(CustomError::new(CustomErrorKind::OutOfRangePiles(n as usize)))
     } else {
-        Ok((input, ParsedMove::MoveFromStackToPile(n as usize)))
+        Ok((input, ParsedMove::MoveFromStackToPile(n as u8))) // Safe, is < 7
     }
 }
 
@@ -183,7 +183,7 @@ pub fn parse_move_stack_to_ace(input: &str) -> CResult<&str, ParsedMove> {
     if n >= 4 {
         Err(CustomError::new(CustomErrorKind::OutOfRangeAces(n as usize)))
     } else {
-        Ok((input, ParsedMove::MoveFromStackToAce(n as usize)))
+        Ok((input, ParsedMove::MoveFromStackToAce(n as u8))) // Safe, is < 4
     }
 }
 
@@ -200,8 +200,8 @@ pub fn parse_move_pile_to_pile(input: &str) -> CResult<&str, ParsedMove> {
         Err(CustomError::new(CustomErrorKind::OutOfRangePiles(z as usize)))
     } else if x == y {
         Err(CustomError::new(CustomErrorKind::RepeatedSelection))
-    } else if amount >= u8::MAX as u32 {
-        Err(CustomError::new(CustomErrorKind::AmountTooLarge(amount as usize)))
+    } else if n >= u8::MAX as u32 {
+        Err(CustomError::new(CustomErrorKind::AmountTooLarge(n as usize)))
     } else {
         Ok((input, ParsedMove::MoveFromPileToPile {
             from: x as u8, // u32 -> u8 is ok because we know they're under 7
@@ -226,8 +226,8 @@ pub fn parse_move_pile_to_aces(input: &str) -> CResult<&str, ParsedMove> {
         Err(CustomError::new(CustomErrorKind::OutOfRangeAces(ace as usize)))
     } else {
         Ok((input, ParsedMove::MoveFromPileToAce {
-            pile: pile as usize,
-            ace: ace as usize,
+            pile: pile as u8,
+            ace: ace as u8,
         }))
     }
 }
@@ -245,8 +245,8 @@ pub fn parse_move_aces_to_pile(input: &str) -> CResult<&str, ParsedMove> {
         Err(CustomError::new(CustomErrorKind::OutOfRangeAces(ace as usize)))
     } else {
         Ok((input, ParsedMove::MoveFromAceToPile {
-            ace: ace as usize,
-            pile: pile as usize,
+            ace: ace as u8,
+            pile: pile as u8,
         }))
     }
 }

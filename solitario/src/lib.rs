@@ -1,7 +1,7 @@
 use cards_core::*;
 
 mod parse;
-use parse::*;
+pub use parse::*;
 
 pub mod solver;
 pub use solver::*;
@@ -40,7 +40,7 @@ impl GamePile {
     fn _get_head_of_revealed(&self) -> Option<&Card> {
         if self.cards.is_empty() { None }
         else {
-            Some(&self.cards[self.cards.len() - self.revealed])
+            Some(&self.cards[self.cards.len() - self.revealed as usize])
         }
     }
 
@@ -54,7 +54,7 @@ impl GamePile {
     /// `n` is the index, like in `.get` or indexing methods
     fn get_nth_revealed(&self, n: usize) -> Option<&Card> {
         dbg!(self.revealed, &self.cards, n);
-        if self.revealed < n || self.cards.len() <= n { return None; }
+        if (self.revealed as usize) < n || self.cards.len() <= n { return None; }
 
         dbg!(
         self.cards.iter().rev().nth(n) // O(n) also
@@ -184,7 +184,7 @@ impl Table {
             PM::MoveFromStackToPile(p) => {
                 if self.stack.is_empty() { return Err(MoveMakingError::StackIsEmpty) }
                 let c = self.stack.top().expect("We're on the branch where this is safe");
-                self.piles[p].add_card(*c)?;
+                self.piles[p as usize].add_card(*c)?;
                 let _ = self.stack.take_from_top().expect("Same reason");
                 if !self.passed_stack.is_empty() {
                     self.stack.push_to_top(self.passed_stack.take_from_bottom().unwrap());
@@ -193,7 +193,7 @@ impl Table {
             PM::MoveFromStackToAce(a) => {
                 if self.stack.is_empty() { return Err(MoveMakingError::StackIsEmpty) }
                 let c = self.stack.top().expect("We're on the branch where this is safe");
-                self.aces[a].add_card(*c)?;
+                self.aces[a as usize].add_card(*c)?;
                 let _ = self.stack.take_from_top().expect("Same reason");
 
                 if !self.passed_stack.is_empty() {
@@ -205,7 +205,7 @@ impl Table {
             },
             PM::MoveFromPileToAce { pile, ace } => {
                 let card = self.piles[pile as usize].get_tail_of_revealed().ok_or(MoveMakingError::GamePileHasNoRevealed)?;
-                self.aces[ace].add_card(*card)?;
+                self.aces[ace as usize].add_card(*card)?;
                 let _ = self.piles[pile as usize].pop_tail_of_revealed();
             },
             PM::MoveFromAceToPile { ace, pile } => {
@@ -231,7 +231,7 @@ impl Table {
         let mut to   = self.piles[to_idx as usize].clone();
 
         if amount == 0 { return Err(GamePileMovingError::AmountWasZero) }
-        let from_base = from.get_nth_revealed(amount - 1).ok_or(GamePileMovingError::PileHasNoRevealed)?;
+        let from_base = from.get_nth_revealed(amount as usize - 1).ok_or(GamePileMovingError::PileHasNoRevealed)?;
         let to_tail   = to.get_tail_of_revealed();
 
 
@@ -240,7 +240,7 @@ impl Table {
             eprintln!("Legality/King check passed: {:?} and {:?}", from_base, to_tail);
             if amount > from.revealed { return Err(GamePileMovingError::NotEnoughRevealedCards(amount)) };
 
-            let removal_index = from.cards.len() - amount; // len varies so we store it here
+            let removal_index = from.cards.len() - amount as usize; // len varies so we store it here
             for _ in 0..amount {
                 dbg!(&from.cards);
                 let c = from.cards.remove(removal_index);
@@ -262,7 +262,7 @@ impl Table {
         }
     }
     pub fn has_won(&self) -> bool {
-        self.piles.iter().map(|p| p.cards.len() == p.revealed).all(|b| b)
+        self.piles.iter().map(|p| p.cards.len() == p.revealed as usize).all(|b| b)
     }
 }
 
@@ -346,7 +346,7 @@ impl Display for Table {
             for GamePile { cards, revealed } in &self.piles {
                 if cards.get(depth).is_none() {
                     // Nothing
-                } else if let (true, Some(card)) = (*revealed >= cards.len()-depth,
+                } else if let (true, Some(card)) = (*revealed as usize >= cards.len()-depth,
                                                     cards.get(depth)) {
                     s.push_str(&print_card_fr(card));
                 } else {

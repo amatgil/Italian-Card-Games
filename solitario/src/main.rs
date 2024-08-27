@@ -5,5 +5,6 @@ fn main() {
 
     println!("Solving");
 
-    println!("{:?}", solve_game(&table));
+    println!("Size of table is: {:?}B", std::mem::size_of::<Table>());
+    println!("Size of move is: {:?}B", std::mem::size_of::<ParsedMove>());
 }
