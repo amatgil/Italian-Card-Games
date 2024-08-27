@@ -2,6 +2,10 @@ use cards_core::*;
 
 mod parse;
 use parse::*;
+
+pub mod solver;
+pub use solver::*;
+
 pub use parse::SYNTAX_CHEATSHEET;
 
 const RED_SUITS: [Suit; 2]   = [Suit::Denari, Suit::Spade];
@@ -21,7 +25,7 @@ pub struct Table {
 #[derive(Clone, Debug, Default)]
 struct GamePile {
     cards: Vec<Card>,
-    revealed: usize,  // how many cards of this pile have been revealed
+    revealed: u8,  // how many cards of this pile have been revealed
 }
 #[derive(Clone, Debug, Default)]
 struct AcePile {
@@ -136,7 +140,7 @@ pub enum GamePileMovingError {
     #[error("specified amount was zero")]
     AmountWasZero,
     #[error("attempting to move more cards than are revealed")]
-    NotEnoughRevealedCards(usize),
+    NotEnoughRevealedCards(u8),
 }
 
 impl Table {
@@ -200,14 +204,14 @@ impl Table {
                 self.move_pile(from, to, amount)?;
             },
             PM::MoveFromPileToAce { pile, ace } => {
-                let card = self.piles[pile].get_tail_of_revealed().ok_or(MoveMakingError::GamePileHasNoRevealed)?;
+                let card = self.piles[pile as usize].get_tail_of_revealed().ok_or(MoveMakingError::GamePileHasNoRevealed)?;
                 self.aces[ace].add_card(*card)?;
-                let _ = self.piles[pile].pop_tail_of_revealed();
+                let _ = self.piles[pile as usize].pop_tail_of_revealed();
             },
             PM::MoveFromAceToPile { ace, pile } => {
-                let card = self.aces[ace].top().ok_or(MoveMakingError::AcePileIsEmpty)?;
-                self.piles[pile].add_card(*card)?;
-                let _ = self.aces[ace].pop();
+                let card = self.aces[ace as usize].top().ok_or(MoveMakingError::AcePileIsEmpty)?;
+                self.piles[pile as usize].add_card(*card)?;
+                let _ = self.aces[ace as usize].pop();
             },
             PM::Cycle => {
                 while !self.stack.is_empty() { self.make_move("next")?; }
@@ -218,13 +222,13 @@ impl Table {
         self.moves += 1;
         Ok(())
     }
-    pub fn move_pile(&mut self, from_idx: usize, to_idx: usize, amount: usize) -> Result<(), GamePileMovingError> {
+    pub fn move_pile(&mut self, from_idx: u8, to_idx: u8, amount: u8) -> Result<(), GamePileMovingError> {
         if from_idx >= 7 || to_idx >= 7 { return Err(GamePileMovingError::PileOutOfRange) }; 
 
         // We clone because we can't `&mut` them both at once, we'll reassign back if we're on the
         // happy path
-        let mut from = self.piles[from_idx].clone();
-        let mut to   = self.piles[to_idx].clone();
+        let mut from = self.piles[from_idx as usize].clone();
+        let mut to   = self.piles[to_idx as usize].clone();
 
         if amount == 0 { return Err(GamePileMovingError::AmountWasZero) }
         let from_base = from.get_nth_revealed(amount - 1).ok_or(GamePileMovingError::PileHasNoRevealed)?;
@@ -250,8 +254,8 @@ impl Table {
             if from.revealed == 0 { from.revealed = 1 }
 
             // We were on the happy path, we must reassign back
-            self.piles[from_idx] = from;
-            self.piles[to_idx] = to;
+            self.piles[from_idx as usize] = from;
+            self.piles[to_idx as usize] = to;
             Ok(())
         } else {
             Err(GamePileMovingError::IllegalMove) 
