@@ -9,6 +9,7 @@ pub struct Card {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[repr(u8)]
 pub enum Suit {
     Denari,
     Coppe,
@@ -18,7 +19,7 @@ pub enum Suit {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CardNum {
-    Numeric(usize),
+    Numeric(u8),
     Fante,
     Cavallo,
     Re
@@ -71,7 +72,7 @@ impl Deck {
 impl Card {
     pub fn new_it(suit: Suit, n: usize) -> Card {
         match n {
-            1..=7 => Card { suit, number: CardNum::Numeric(n) },
+            1..=7 => Card { suit, number: CardNum::Numeric(n as u8) },
             8     => Card { suit, number: CardNum::Fante },
             9     => Card { suit, number: CardNum::Cavallo },
             10    => Card { suit, number: CardNum::Re },
@@ -80,7 +81,7 @@ impl Card {
     }
     pub fn new_fr(suit: Suit, n: usize) -> Card {
         match n {
-            1..=10 => Card { suit, number: CardNum::Numeric(n) },
+            1..=10 => Card { suit, number: CardNum::Numeric(n as u8) },
             11     => Card { suit, number: CardNum::Fante },
             12     => Card { suit, number: CardNum::Cavallo },
             13     => Card { suit, number: CardNum::Re },
@@ -90,7 +91,7 @@ impl Card {
 
     pub fn denari(n: usize) -> Card {
         match n { 
-            1..=7 => Card { suit: Suit::Denari, number: CardNum::Numeric(n) },
+            1..=7 => Card { suit: Suit::Denari, number: CardNum::Numeric(n as u8) },
             8     => Card { suit: Suit::Denari, number: CardNum::Fante },
             9     => Card { suit: Suit::Denari, number: CardNum::Cavallo },
             10    => Card { suit: Suit::Denari, number: CardNum::Re },
@@ -101,7 +102,7 @@ impl Card {
     /// Assuming italian standard value counting
     pub fn value(&self) -> usize {
         match self.number {
-            CardNum::Numeric(n) => n,
+            CardNum::Numeric(n) => n as usize,
             CardNum::Fante      => 8,
             CardNum::Cavallo    => 9,
             CardNum::Re         => 10,
@@ -110,7 +111,7 @@ impl Card {
 
     pub fn value_fr(&self) -> usize {
         match self.number {
-            CardNum::Numeric(n) => n,
+            CardNum::Numeric(n) => n as usize,
             CardNum::Fante      => 11,
             CardNum::Cavallo    => 12,
             CardNum::Re         => 13,
