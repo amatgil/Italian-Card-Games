@@ -323,6 +323,12 @@ impl Display for Table {
                                        .map(print_card_fr)
                                        .unwrap_or(UNKNOWN_CARD.to_string());
 
+        s.push_str(&format!("          \t{}\t{}\t{}\t{}\n", 
+                            "[0]",
+                            "[1]",
+                            "[2]",
+                            "[3]"));
+
         s.push_str(&format!("\x1B[1mAce piles:\x1B[0m\t{}\t{}\t{}\t{}\n\n",
                             print_ace(0),
                             print_ace(1),
